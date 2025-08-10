@@ -1,0 +1,173 @@
+REMOTE WORK POLICY
+
+Effective Date: January 1, 2024
+Last Updated: December 15, 2023
+Policy Owner: Human Resources Department
+
+1. PURPOSE
+This policy establishes guidelines for remote work arrangements to support employee productivity, work-life balance and business continuity while maintaining organizational culture and collaboration.
+
+2. ELIGIBILITY
+Remote work is available to employees in the following categories:
+- Full-time employees with at least 6 months of service
+- High performers (rating of 4 or 5) may be eligible after 3 months with manager approval
+- Critical roles may be eligible earlier based on business needs and manager recommendation
+- Employees whose job functions can be performed remotely (determined by formal job analysis)
+- Employees with satisfactory performance records
+- Employees who have completed remote work training
+
+2.1 Job Function Remote Work Assessment
+- Formal job analysis conducted by HR and department managers
+- Assessment criteria: technology requirements, collaboration needs, security considerations
+- Decision documented and communicated to employee
+- Annual review of remote work eligibility for all positions
+- Appeal process available if remote work request is denied
+
+3. REMOTE WORK ARRANGEMENTS
+3.1 Hybrid Model
+- Employees may work 2-3 days per week remotely
+- Core collaboration days (Tuesday-Thursday) require office presence
+- Monday and Friday are flexible remote work days
+
+3.2 Full Remote
+- Available for specific roles and departments
+- Requires manager approval and periodic review
+- Must maintain regular communication and availability
+
+4. EXPECTATIONS AND RESPONSIBILITIES
+4.1 Work Hours
+- Maintain regular business hours (9:00 AM - 5:00 PM local time)
+- Be available for meetings and collaboration during core hours
+- Respond to communications within 2 hours during business hours
+- Outside business hours: Response within 24 hours (next business day)
+- Weekend response: Not required unless on-call or critical project
+
+4.2 Communication
+- Use company-approved communication tools (Slack, Teams, Zoom)
+- Update status regularly (available, busy, away, offline) to foster team transparency
+- Participate in team meetings and company events
+- Maintain professional communication standards
+- Communication updates are for team coordination, not micromanagement
+
+4.3 Performance
+- Meet all performance goals and deadlines
+- Complete assigned tasks on time
+- Maintain quality standards
+- Participate in performance reviews
+- Focus on deliverables and results, not hours logged or online presence
+- Managers assess performance based on outcomes, not availability metrics
+
+5. EQUIPMENT AND TECHNOLOGY
+5.1 Company Provided
+- Laptop and necessary accessories
+- Software licenses and subscriptions
+- VPN access and security tools
+- Ergonomic equipment (upon request, subject to approval process)
+
+5.2 Ergonomic Equipment Process
+- Submit ergonomic assessment request to HR within 30 days of remote work start
+- Maximum budget: $500 for initial setup, $200 annually for updates
+- Equipment must be approved by HR and IT for compatibility and security
+- Company retains ownership of all provided equipment
+- Return equipment upon termination of remote work or employment
+
+5.3 Employee Responsibility
+- Reliable internet connection (minimum 25 Mbps)
+- Quiet, professional work environment
+- Proper ergonomic setup
+- Immediate reporting of equipment issues or malfunctions
+- Acknowledge responsibility for equipment care and maintenance
+- Report security incidents within 1 hour of discovery
+
+6. SECURITY AND CONFIDENTIALITY
+6.1 Data Protection
+- Use company VPN for all work activities
+- Secure physical workspace from unauthorized access
+- Lock devices when unattended
+- Follow data classification guidelines
+
+6.2 Privacy
+- Maintain confidentiality of company information
+- Use private networks only
+- Avoid public Wi-Fi for sensitive work
+- Report security incidents immediately
+
+7. EXPENSES AND REIMBURSEMENT
+7.1 Eligible Expenses
+- Internet service (up to $100/month)
+- Home office equipment (one-time setup, up to $300)
+- Ergonomic furniture (upon approval, up to $500)
+- Business-related travel expenses
+
+7.2 Reimbursement Process
+- Submit expense reports monthly
+- Include receipts and business justification
+- Manager approval required for amounts over $500
+- Processed within 30 days of submission
+
+8. TERMINATION OF REMOTE WORK
+8.1 Company Right
+- May revoke remote work privileges with 30 days notice
+- Performance or policy violations
+- Business needs or organizational changes
+- Security or compliance concerns
+
+8.2 Employee Right
+- May request return to office with 2 weeks notice
+- Personal circumstances or preferences
+- Health or family considerations
+
+9. COMPLIANCE AND MONITORING
+9.1 Policy Compliance
+- Regular policy reviews and updates
+- Employee acknowledgment required
+- Manager training and support
+- Periodic policy effectiveness assessment
+
+9.2 Monitoring
+- Work output and performance metrics (deliverables, not time tracking)
+- Communication and collaboration patterns
+- Security and compliance adherence
+- Employee satisfaction and feedback
+
+10. MANAGER GUIDELINES
+10.1 Performance Management
+- Focus on results and deliverables, not hours worked
+- Set clear expectations and measurable goals
+- Provide regular feedback and support
+- Avoid micromanagement and excessive check-ins
+- Use objective performance metrics
+
+10.2 Communication Management
+- Establish clear communication protocols
+- Respect response time boundaries
+- Encourage asynchronous communication when possible
+- Avoid creating unrealistic availability expectations
+- Foster transparency without surveillance
+
+11. CONTACTS AND SUPPORT
+For questions or concerns about this policy:
+- HR Generalist: hr@company.com
+- IT Support: support@company.com
+- Manager or Supervisor
+- Employee Relations: er@company.com
+- Remote Work Coordinator: remote@company.com
+
+12. FREQUENTLY ASKED QUESTIONS
+
+Q: How do I request ergonomic equipment?
+A: Submit request to HR within 30 days of starting remote work, maximum budget $500
+
+Q: What if my job function assessment denies remote work?
+A: Appeal to HR with supporting documentation, or discuss alternative arrangements with manager
+
+Q: What are the response time expectations outside business hours?
+A: Within 24 hours (next business day), no weekend response required unless on-call
+
+Q: How is my performance measured when working remotely?
+A: Based on deliverables and results, not hours logged or online presence
+
+Q: Can I appeal a remote work eligibility decision?
+A: Yes, submit appeal to HR within 30 days with supporting documentation
+
+This policy is subject to change with appropriate notice to employees.

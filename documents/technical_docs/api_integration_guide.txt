@@ -1,0 +1,724 @@
+API INTEGRATION GUIDE
+
+Version: 2.1.0
+Last Updated: December 15, 2024
+Document Owner: Engineering Team
+Classification: Internal Use
+
+1. OVERVIEW
+
+This document provides comprehensive guidance for integrating with our company's internal APIs. Our API ecosystem supports data retrieval, document search and business intelligence operations across all major business functions.
+
+2. API ENDPOINTS
+
+2.1 Base URL
+Production: https://api.company.com/v2
+Staging: https://staging-api.company.com/v2
+Development: https://dev-api.company.com/v2
+
+2.2 Authentication
+All API requests require authentication using OAuth 2.0 Bearer tokens.
+
+Header: Authorization: Bearer {access_token}
+
+Token Endpoint: POST /auth/token
+- Grant Type: client_credentials
+- Scope: api.read api.write
+
+2.3 Rate Limits
+- Standard Tier: 1000 requests/hour
+- Premium Tier: 5000 requests/hour
+- Enterprise Tier: 25000 requests/hour
+
+2.4 Rate Limit Tiers
+- Standard Tier: Available to all authenticated users
+- Premium Tier: Available to verified business partners and high-volume users
+- Enterprise Tier: Available to strategic partners and enterprise customers
+- Tier upgrades: Contact api-support@company.com with business justification
+
+3. PERFORMANCE AND RELIABILITY
+
+3.1 Service Level Agreements (SLAs)
+- Query Response Time: <500ms (95th percentile)
+- Document Search: <800ms (95th percentile)
+- AI Engine Response: <2 seconds (95th percentile)
+- Uptime: 99.9% (monthly)
+- Data Freshness: <5 minutes for real-time data
+
+3.2 Error Handling and Fallback Strategies
+- AI Engine Failures: Automatic fallback to rule-based responses
+- Document Search Failures: Fallback to basic keyword search
+- Database Outages: Cached responses with stale data warnings
+- Partial Failures: Graceful degradation with available data
+- Retry Logic: Exponential backoff (1s, 2s, 4s, 8s, 16s)
+
+3.3 Retry Strategies
+- Transient Errors (5xx): Retry up to 3 times with exponential backoff
+- Rate Limit Errors (429): Retry after Retry-After header
+- Network Timeouts: Retry up to 2 times with 5-second intervals
+- Critical Operations: Circuit breaker pattern for system protection
+
+4. CORE API ENDPOINTS
+
+4.1 Employee Management API
+GET /employees
+- Retrieves employee information
+- Supports filtering by department, role, manager
+- Pagination: limit=50, offset=0
+
+GET /employees/{id}
+- Retrieves specific employee details
+- Includes hierarchy information and performance metrics
+
+GET /employees/{id}/reports
+- Retrieves direct reports for a manager
+- Supports recursive hierarchy traversal
+
+4.2 Sales Analytics API
+GET /sales
+- Retrieves sales data with filtering options
+- Supports date ranges, product categories, employee attribution
+- Aggregation by time period, product, employee
+
+GET /sales/summary
+- Provides aggregated sales metrics
+- Supports multiple grouping dimensions
+- Real-time data with 5-minute refresh
+
+GET /sales/trends
+- Historical sales trends and patterns
+- Seasonal analysis and forecasting data
+- Performance comparisons across periods
+
+4.3 Project Management API
+GET /projects
+- Retrieves project information and status
+- Supports filtering by status, priority, manager
+- Includes budget and timeline data
+
+GET /projects/{id}
+- Detailed project information
+- Team composition and resource allocation
+- Milestone tracking and progress updates
+
+GET /projects/status
+- Project status dashboard data
+- Completion rates and performance metrics
+- Risk assessment and mitigation status
+
+4.4 Bulk Operations API
+POST /employees/bulk
+- Bulk employee data retrieval (up to 1000 records)
+- Supports batch filtering and field selection
+- Returns compressed response for efficiency
+
+POST /sales/bulk
+- Bulk sales data retrieval (up to 5000 records)
+- Supports date range batching
+- Includes aggregation summaries
+
+5. DATA MODELS
+
+5.1 Employee Object
+{
+  "id": 123,
+  "name": "John Doe",
+  "department": "Engineering",
+  "role": "Senior Software Engineer",
+  "email": "john.doe@company.com",
+  "hire_date": "2022-03-15",
+  "salary": 95000.00,
+  "manager_id": 45,
+  "phone": "+1-555-0123",
+  "address": "123 Main St, City, State",
+  "performance_rating": 4.2,
+  "last_review_date": "2024-10-15"
+}
+
+5.2 Sales Object
+{
+  "id": 456,
+  "date": "2024-12-15",
+  "product": "Laptop Pro X1",
+  "category": "Computers",
+  "revenue": 2499.99,
+  "employee_id": 123,
+  "customer_name": "Jane Smith",
+  "customer_email": "jane.smith@customer.com",
+  "quantity": 1,
+  "region": "North America",
+  "sales_channel": "Direct"
+}
+
+5.3 Project Object
+{
+  "id": 789,
+  "name": "Digital Transformation",
+  "description": "Strategic initiative to modernize core business processes",
+  "manager_id": 45,
+  "status": "Active",
+  "start_date": "2024-01-15",
+  "deadline": "2025-06-30",
+  "budget": 500000.00,
+  "priority": "High",
+  "completion_percentage": 75,
+  "team_size": 12,
+  "risk_level": "Medium"
+}
+
+6. QUERY PARAMETERS
+
+6.1 Common Parameters
+- limit: Number of results (default: 50, max: 1000)
+- offset: Pagination offset (default: 0)
+- sort: Sort field (default: id)
+- order: Sort order (asc/desc, default: asc)
+- fields: Comma-separated list of fields to return
+
+6.2 Filtering Parameters
+- date_from: Start date (YYYY-MM-DD)
+- date_to: End date (YYYY-MM-DD)
+- department: Department name
+- status: Status value
+- category: Category name
+- manager_id: Manager employee ID
+
+6.3 Search Parameters
+- q: Full-text search query
+- search_fields: Fields to search in
+- fuzzy: Enable fuzzy matching (true/false)
+
+7. RESPONSE FORMATS
+
+7.1 Success Response
+{
+  "success": true,
+  "data": [...],
+  "pagination": {
+    "total": 1250,
+    "limit": 50,
+    "offset": 0,
+    "has_more": true,
+    "next_offset": 50,
+    "total_pages": 25
+  },
+  "metadata": {
+    "request_id": "req_123456",
+    "timestamp": "2024-12-15T10:30:00Z",
+    "version": "2.1.0",
+    "schema_version": "1.0"
+  }
+}
+
+7.2 Error Response
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid date format",
+    "details": {
+      "field": "date_from",
+      "value": "invalid-date",
+      "expected": "YYYY-MM-DD"
+    }
+  },
+  "metadata": {
+    "request_id": "req_123456",
+    "timestamp": "2024-12-15T10:30:00Z",
+    "version": "2.1.0"
+  }
+}
+
+7.3 Response Schema Versioning
+- Schema versions are stable within major API versions
+- New fields may be added as optional
+- Deprecated fields marked with "deprecated": true
+- Breaking changes only in major version releases
+- Clients should handle missing optional fields gracefully
+
+8. ERROR CODES AND HANDLING
+
+8.1 Common Error Codes
+| Code | HTTP Status | Description | Action |
+|------|-------------|-------------|---------|
+| VALIDATION_ERROR | 400 | Invalid request parameters | Check parameter format and values |
+| UNAUTHORIZED | 401 | Invalid or expired token | Re-authenticate and refresh token |
+| FORBIDDEN | 403 | Insufficient permissions | Check user role and access level |
+| NOT_FOUND | 404 | Resource not found | Verify resource ID or query parameters |
+| RATE_LIMITED | 429 | Rate limit exceeded | Implement exponential backoff |
+| INTERNAL_ERROR | 500 | Server error | Retry with exponential backoff |
+| SERVICE_UNAVAILABLE | 503 | Service temporarily unavailable | Retry after Retry-After header |
+
+8.2 Rate Limit Error Handling
+- HTTP 429 responses include Retry-After header
+- Implement exponential backoff: 1s, 2s, 4s, 8s, 16s
+- Track rate limit usage with X-RateLimit-* headers
+- Consider implementing circuit breaker pattern for repeated failures
+
+9. INTEGRATION EXAMPLES
+
+9.1 Python Integration with Error Handling and Pagination
+```python
+import requests
+import json
+import time
+from typing import List, Dict, Optional
+
+class CompanyAPI:
+    def __init__(self, base_url: str, client_id: str, client_secret: str):
+        self.base_url = base_url
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.access_token = None
+        self.token_expires_at = None
+    
+    def authenticate(self) -> bool:
+        """Authenticate and get access token with retry logic"""
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                auth_url = f"{self.base_url}/auth/token"
+                data = {
+                    "grant_type": "client_credentials",
+                    "client_id": self.client_id,
+                    "client_secret": self.client_secret,
+                    "scope": "api.read api.write"
+                }
+                response = requests.post(auth_url, data=data, timeout=10)
+                response.raise_for_status()
+                
+                token_data = response.json()
+                self.access_token = token_data["access_token"]
+                self.token_expires_at = time.time() + token_data.get("expires_in", 3600)
+                return True
+                
+            except requests.exceptions.RequestException as e:
+                if attempt == max_retries - 1:
+                    raise Exception(f"Authentication failed after {max_retries} attempts: {e}")
+                time.sleep(2 ** attempt)  # Exponential backoff
+        return False
+    
+    def _refresh_token_if_needed(self) -> bool:
+        """Refresh token if expired or about to expire"""
+        if not self.access_token or (self.token_expires_at and time.time() > self.token_expires_at - 300):
+            return self.authenticate()
+        return True
+    
+    def _make_request(self, method: str, endpoint: str, **kwargs) -> Dict:
+        """Make API request with error handling and retry logic"""
+        if not self._refresh_token_if_needed():
+            raise Exception("Failed to refresh authentication token")
+        
+        headers = {"Authorization": f"Bearer {self.access_token}"}
+        url = f"{self.base_url}{endpoint}"
+        
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = requests.request(method, url, headers=headers, **kwargs, timeout=30)
+                
+                if response.status_code == 429:  # Rate limited
+                    retry_after = int(response.headers.get('Retry-After', 60))
+                    time.sleep(retry_after)
+                    continue
+                
+                response.raise_for_status()
+                return response.json()
+                
+            except requests.exceptions.RequestException as e:
+                if attempt == max_retries - 1:
+                    raise Exception(f"Request failed after {max_retries} attempts: {e}")
+                time.sleep(2 ** attempt)  # Exponential backoff
+        
+        raise Exception("Request failed after all retry attempts")
+    
+    def get_employees(self, department: Optional[str] = None, limit: int = 50) -> List[Dict]:
+        """Get employees with pagination handling"""
+        all_employees = []
+        offset = 0
+        
+        while True:
+            params = {"limit": limit, "offset": offset}
+            if department:
+                params["department"] = department
+            
+            response = self._make_request("GET", "/employees", params=params)
+            
+            if not response.get("success"):
+                raise Exception(f"API error: {response.get('error', {}).get('message', 'Unknown error')}")
+            
+            employees = response.get("data", [])
+            all_employees.extend(employees)
+            
+            pagination = response.get("pagination", {})
+            if not pagination.get("has_more", False):
+                break
+            
+            offset = pagination.get("next_offset", offset + limit)
+        
+        return all_employees
+    
+    def get_sales_summary(self, date_from: Optional[str] = None, date_to: Optional[str] = None) -> Dict:
+        """Get sales summary with error handling"""
+        params = {}
+        if date_from:
+            params["date_from"] = date_from
+        if date_to:
+            params["date_to"] = date_to
+        
+        response = self._make_request("GET", "/sales/summary", params=params)
+        
+        if not response.get("success"):
+            raise Exception(f"API error: {response.get('error', {}).get('message', 'Unknown error')}")
+        
+        return response.get("data", {})
+
+# Usage example with secure credential handling
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
+
+api = CompanyAPI(
+    base_url=os.getenv("API_BASE_URL", "https://api.company.com/v2"),
+    client_id=os.getenv("API_CLIENT_ID"),
+    client_secret=os.getenv("API_CLIENT_SECRET")
+)
+
+try:
+    api.authenticate()
+    employees = api.get_employees(department="Engineering", limit=100)
+    sales_summary = api.get_sales_summary("2024-10-01", "2024-12-31")
+    print(f"Retrieved {len(employees)} employees")
+except Exception as e:
+    print(f"API integration error: {e}")
+```
+
+9.2 JavaScript Integration with Error Handling and Pagination
+```javascript
+class CompanyAPI {
+    constructor(baseUrl, clientId, clientSecret) {
+        this.baseUrl = baseUrl;
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+        this.accessToken = null;
+        this.tokenExpiresAt = null;
+    }
+    
+    async authenticate() {
+        const maxRetries = 3;
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const authUrl = `${this.baseUrl}/auth/token`;
+                const data = new URLSearchParams({
+                    grant_type: 'client_credentials',
+                    client_id: this.clientId,
+                    client_secret: this.clientSecret,
+                    scope: 'api.read api.write'
+                });
+                
+                const response = await fetch(authUrl, {
+                    method: 'POST',
+                    body: data,
+                    timeout: 10000
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                this.accessToken = result.access_token;
+                this.tokenExpiresAt = Date.now() + (result.expires_in || 3600) * 1000;
+                return true;
+                
+            } catch (error) {
+                if (attempt === maxRetries - 1) {
+                    throw new Error(`Authentication failed after ${maxRetries} attempts: ${error.message}`);
+                }
+                await this.sleep(2 ** attempt * 1000); // Exponential backoff
+            }
+        }
+        return false;
+    }
+    
+    async _refreshTokenIfNeeded() {
+        if (!this.accessToken || (this.tokenExpiresAt && Date.now() > this.tokenExpiresAt - 300000)) {
+            return await this.authenticate();
+        }
+        return true;
+    }
+    
+    async _makeRequest(method, endpoint, options = {}) {
+        if (!(await this._refreshTokenIfNeeded())) {
+            throw new Error('Failed to refresh authentication token');
+        }
+        
+        const headers = {
+            'Authorization': `Bearer ${this.accessToken}`,
+            ...options.headers
+        };
+        
+        const url = `${this.baseUrl}${endpoint}`;
+        const maxRetries = 3;
+        
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const response = await fetch(url, {
+                    method,
+                    headers,
+                    ...options,
+                    timeout: 30000
+                });
+                
+                if (response.status === 429) { // Rate limited
+                    const retryAfter = parseInt(response.headers.get('Retry-After') || '60');
+                    await this.sleep(retryAfter * 1000);
+                    continue;
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return await response.json();
+                
+            } catch (error) {
+                if (attempt === maxRetries - 1) {
+                    throw new Error(`Request failed after ${maxRetries} attempts: ${error.message}`);
+                }
+                await this.sleep(2 ** attempt * 1000); // Exponential backoff
+            }
+        }
+        
+        throw new Error('Request failed after all retry attempts');
+    }
+    
+    async getEmployees(department = null, limit = 50) {
+        const allEmployees = [];
+        let offset = 0;
+        
+        while (true) {
+            const params = new URLSearchParams({ limit, offset });
+            if (department) params.append('department', department);
+            
+            const response = await this._makeRequest('GET', `/employees?${params}`);
+            
+            if (!response.success) {
+                throw new Error(`API error: ${response.error?.message || 'Unknown error'}`);
+            }
+            
+            const employees = response.data || [];
+            allEmployees.push(...employees);
+            
+            const pagination = response.pagination || {};
+            if (!pagination.has_more) break;
+            
+            offset = pagination.next_offset || offset + limit;
+        }
+        
+        return allEmployees;
+    }
+    
+    async getSalesSummary(dateFrom = null, dateTo = null) {
+        const params = new URLSearchParams();
+        if (dateFrom) params.append('date_from', dateFrom);
+        if (dateTo) params.append('date_to', dateTo);
+        
+        const response = await this._makeRequest('GET', `/sales/summary?${params}`);
+        
+        if (!response.success) {
+            throw new Error(`API error: ${response.error?.message || 'Unknown error'}`);
+        }
+        
+        return response.data || {};
+    }
+    
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+
+// Usage example with environment variable handling
+const api = new CompanyAPI(
+    process.env.API_BASE_URL || 'https://api.company.com/v2',
+    process.env.API_CLIENT_ID,
+    process.env.API_CLIENT_SECRET
+);
+
+(async () => {
+    try {
+        await api.authenticate();
+        const employees = await api.getEmployees('Engineering', 100);
+        const salesSummary = await api.getSalesSummary('2024-10-01', '2024-12-31');
+        console.log(`Retrieved ${employees.length} employees`);
+    } catch (error) {
+        console.error(`API integration error: ${error.message}`);
+    }
+})();
+```
+
+10. BEST PRACTICES
+
+10.1 Authentication
+- Store tokens securely and refresh before expiration
+- Use environment variables for credentials (never hardcode)
+- Implement token refresh logic with exponential backoff
+- Handle authentication errors gracefully
+- Store client secrets in secure environment variables or secret management systems
+
+10.2 Error Handling
+- Always check response status codes
+- Implement retry logic for transient failures (5xx errors)
+- Handle rate limiting with exponential backoff
+- Log errors with request context and request_id
+- Provide user-friendly error messages
+- Implement circuit breaker pattern for repeated failures
+
+10.3 Performance
+- Use pagination for large datasets
+- Implement caching where appropriate
+- Batch requests when possible using bulk endpoints
+- Monitor API usage and rate limits
+- Use compression for bulk data transfers
+
+10.4 Security
+- Never log sensitive data (tokens, credentials, PII)
+- Validate all input parameters
+- Use HTTPS for all communications
+- Implement proper access controls
+- Store credentials in environment variables or secure vaults
+- Rotate client secrets regularly
+
+11. API VERSIONING AND COMPATIBILITY
+
+11.1 Versioning Strategy
+- Major versions (v1, v2, v3): Breaking changes allowed
+- Minor versions (v2.1, v2.2): New features, backward compatible
+- Patch versions (v2.1.1, v2.1.2): Bug fixes only
+- Deprecated endpoints marked with deprecation notices
+- 12-month deprecation period for breaking changes
+- Migration guides provided for major version upgrades
+
+11.2 Backward Compatibility
+- New fields added as optional
+- Existing fields never removed without deprecation notice
+- Response structure remains stable within major versions
+- Version negotiation supported via Accept header
+
+12. MONITORING AND DEBUGGING
+
+12.1 Request Tracking
+- All requests include unique request_id
+- Use request_id for debugging and support
+- Monitor response times and success rates
+- Track API usage patterns
+- Monitor rate limit usage
+
+12.2 Logging
+- Log all API interactions
+- Include request parameters and response codes
+- Monitor for unusual patterns
+- Maintain audit trail for compliance
+- Never log sensitive data
+
+13. TESTING STRATEGIES
+
+13.1 Testing Types
+- Unit Testing: Individual API endpoint testing
+- Integration Testing: End-to-end workflow testing
+- Load Testing: Performance under high traffic
+- Security Testing: Authentication and authorization testing
+- Contract Testing: API contract validation
+
+13.2 Load Testing
+- Test with realistic data volumes
+- Monitor response times under load
+- Test rate limiting behavior
+- Verify fallback mechanisms
+- Test concurrent user scenarios
+
+13.3 Security Testing
+- Test authentication flows
+- Verify authorization rules
+- Test input validation
+- Check for common vulnerabilities
+- Validate data encryption
+
+14. OPERATIONAL RUNBOOKS
+
+14.1 Common Incident Responses
+- AI Model Failures: Switch to rule-based fallback, restart AI service
+- Database Outages: Use cached responses, implement read-only mode
+- Rate Limit Exceeded: Monitor usage patterns, adjust limits if needed
+- Authentication Failures: Check token service, verify client credentials
+- Performance Degradation: Scale resources, check for bottlenecks
+
+14.2 Incident Response Contacts
+- Primary On-Call: oncall@company.com
+- Escalation: escalation@company.com
+- Emergency: emergency@company.com
+
+15. USER ROLES AND ACCESS CONTROL
+
+15.1 Role Definitions
+- Admin: Full system access, user management, configuration
+- Regular User: Standard API access, own data access
+- Auditor: Read-only access, audit log access
+- Manager: Team data access, reporting capabilities
+- API Developer: Extended rate limits, development tools
+
+15.2 Access Privileges
+- Admin: All endpoints, user management, system configuration
+- Regular User: Standard endpoints, own data, basic reporting
+- Auditor: Read-only access, audit logs, compliance reporting
+- Manager: Team data, performance metrics, team reporting
+- API Developer: Extended limits, debug endpoints, development tools
+
+16. DATA PRIVACY AND COMPLIANCE
+
+16.1 GDPR Compliance
+- Data minimization: Only collect necessary data
+- Data anonymization: PII removed from analytics
+- Right to be forgotten: Data deletion endpoints
+- Data portability: Export endpoints
+- Consent management: Consent tracking and updates
+
+16.2 Data Handling
+- PII encryption at rest and in transit
+- Data retention policies enforced
+- Access logging for all data operations
+- Regular privacy impact assessments
+- Data breach notification procedures
+
+17. SUPPORT AND CONTACT
+
+For technical support and questions:
+- API Documentation: https://docs.company.com/api
+- Developer Portal: https://developers.company.com
+- Support Email: api-support@company.com
+- Developer Community: https://community.company.com
+- Emergency Support: emergency@company.com
+- Status Page: https://status.company.com
+
+18. FREQUENTLY ASKED QUESTIONS
+
+Q: How do I handle rate limiting?
+A: Implement exponential backoff, respect Retry-After headers, monitor usage
+
+Q: What happens if the AI engine fails?
+A: Automatic fallback to rule-based responses, check status page for updates
+
+Q: How do I implement pagination?
+A: Use offset-based pagination with has_more flag, loop until has_more is false
+
+Q: How do I refresh expired tokens?
+A: Implement automatic token refresh, check expires_in field, refresh before expiration
+
+Q: What's the API versioning strategy?
+A: Major versions allow breaking changes, minor versions are backward compatible
+
+Q: How do I handle bulk operations?
+A: Use bulk endpoints for large datasets, respect size limits, implement proper error handling
+
+This document is maintained by the Engineering Team and updated regularly.

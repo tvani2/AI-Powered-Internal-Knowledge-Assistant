@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+langchain
+openai
+pandas
+sqlite-utils
+chromadb
+python-dotenv
+ipykernel
+faker
