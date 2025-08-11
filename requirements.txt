@@ -8,3 +8,5 @@ chromadb
 python-dotenv
 ipykernel
 faker
+langchain-openai
+langchain-community
