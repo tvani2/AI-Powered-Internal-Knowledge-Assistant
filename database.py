@@ -1,6 +1,12 @@
+#!/usr/bin/env python3
+"""
+Database setup and population for AI-Powered Internal Knowledge Assistant
+"""
+
 import sqlite3
 import pandas as pd
 from faker import Faker
+import os
 from datetime import datetime, timedelta
 import random
 
@@ -77,6 +83,24 @@ class DatabaseManager:
             )
         ''')
         
+        # Query logs table for debugging
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS query_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                user_query TEXT NOT NULL,
+                query_type TEXT,
+                confidence REAL,
+                sql_generated TEXT,
+                documents_searched TEXT,
+                response TEXT,
+                processing_time REAL,
+                error_message TEXT,
+                user_id TEXT,
+                session_id TEXT
+            )
+        ''')
+        
         # Create indexes for frequently searched columns
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_employees_role ON employees(role)')
@@ -86,6 +110,8 @@ class DatabaseManager:
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_projects_manager ON projects(manager_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_projects_deadline ON projects(deadline)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_query_logs_timestamp ON query_logs (timestamp)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_query_logs_user ON query_logs (user_id)')
         
         self.conn.commit()
         print("Database tables and indexes created successfully!")
@@ -409,6 +435,50 @@ class DatabaseManager:
             ORDER BY count DESC
         ''', self.conn)
         print(df_proj_status.to_string(index=False))
+
+    def log_query(self, user_query, query_type=None, confidence=None, sql_generated=None, 
+                  documents_searched=None, response=None, processing_time=None, 
+                  error_message=None, user_id=None, session_id=None):
+        """Log a query for debugging purposes"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO query_logs 
+            (user_query, query_type, confidence, sql_generated, documents_searched, 
+             response, processing_time, error_message, user_id, session_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            user_query, query_type, confidence, sql_generated, 
+            documents_searched, response, processing_time, error_message, 
+            user_id, session_id
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+    def get_query_logs(self, limit=50, user_id=None):
+        """Retrieve query logs for debugging"""
+        conn = sqlite3.connect(self.db_path)
+        
+        if user_id:
+            query = '''
+                SELECT * FROM query_logs 
+                WHERE user_id = ? 
+                ORDER BY timestamp DESC 
+                LIMIT ?
+            '''
+            df = pd.read_sql_query(query, conn, params=(user_id, limit))
+        else:
+            query = '''
+                SELECT * FROM query_logs 
+                ORDER BY timestamp DESC 
+                LIMIT ?
+            '''
+            df = pd.read_sql_query(query, conn, params=(limit,))
+        
+        conn.close()
+        return df
 
 def main():
     """Main function to set up and populate the database"""

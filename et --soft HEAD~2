@@ -1,0 +1,5 @@
+[33m985ac82[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Remove hardcoded API keys for security - use environment variables instead
+[33mde1f661[m Remove all emojis from UI and console output for cleaner, professional appearance
+[33m9a23162[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Implement database and doc search tool
+[33mff25506[m sample docs and DB schema
+[33m8da63fc[m Initial commit

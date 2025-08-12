@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Internal Knowledge Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            text-align: center;
+            color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            max-width: 1200px;
+            margin: 2rem auto;
+            gap: 2rem;
+            padding: 0 2rem;
+        }
+
+        .chat-section {
+            flex: 2;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            flex: 1;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .chat-header {
+            background: #f8f9fa;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .chat-header .status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #28a745;
+        }
+
+        .chat-header .status.offline {
+            background: #dc3545;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+
+        .message {
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 0.8rem;
+        }
+
+        .message.user .message-avatar {
+            background: #007bff;
+        }
+
+        .message.assistant .message-avatar {
+            background: #28a745;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 0.75rem 1rem;
+            border-radius: 15px;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-content {
+            background: #007bff;
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.assistant .message-content {
+            background: #f8f9fa;
+            color: #333;
+            border-bottom-left-radius: 5px;
+        }
+
+        .message-meta {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 0.25rem;
+        }
+
+        .chat-input {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #e9ecef;
+            background: #f8f9fa;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        .chat-input input:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .chat-input button {
+            padding: 0.75rem 1.5rem;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+
+        .chat-input button:hover {
+            background: #0056b3;
+        }
+
+        .chat-input button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .sidebar h3 {
+            margin-bottom: 1rem;
+            color: #333;
+            font-size: 1.2rem;
+        }
+
+        .sample-queries {
+            margin-bottom: 1.5rem;
+        }
+
+        .query-category {
+            margin-bottom: 1rem;
+        }
+
+        .query-category h4 {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .query-button {
+            display: block;
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.25rem;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            text-align: left;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .query-button:hover {
+            background: #e9ecef;
+            border-color: #007bff;
+        }
+
+        .system-info {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .system-info h4 {
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .system-info p {
+            margin-bottom: 0.25rem;
+            color: #666;
+        }
+
+        .auth-section {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .auth-section h3 {
+            margin-bottom: 0.75rem;
+            color: #333;
+            font-size: 1rem;
+        }
+
+        .auth-section input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .auth-button {
+            width: 100%;
+            padding: 0.5rem;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .auth-button:hover {
+            background: #0056b3;
+        }
+
+        .auth-status {
+            font-size: 0.75rem;
+            color: #666;
+            margin: 0;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 1rem;
+            color: #666;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid #f5c6cb;
+        }
+
+        .response-details {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .response-details h5 {
+            margin-bottom: 0.5rem;
+            color: #0056b3;
+        }
+
+        .response-details p {
+            margin-bottom: 0.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                margin: 1rem;
+                padding: 0;
+            }
+            
+            .sidebar {
+                order: -1;
+                max-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>AI-Powered Internal Knowledge Assistant</h1>
+        <p>Ask questions about employees, sales, projects, policies and more</p>
+    </div>
+
+    <div class="container">
+        <div class="chat-section">
+            <div class="chat-header">
+                <div class="status" id="status"></div>
+                <span>Chat Assistant</span>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <div class="message assistant">
+                    <div class="message-avatar">AI</div>
+                    <div class="message-content">
+                        Hello! I'm your AI assistant. I can help you with:
+                        <ul style="margin-top: 0.5rem; margin-left: 1rem;">
+                            <li>Database queries (employees, sales, projects)</li>
+                            <li>Document searches (policies, meeting notes)</li>
+                            <li>Hybrid queries combining both data sources</li>
+                        </ul>
+                        <div class="message-meta">Just now</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                Processing your query...
+            </div>
+
+            <div class="chat-input">
+                <input type="text" id="queryInput" placeholder="Ask me anything..." onkeypress="handleKeyPress(event)">
+                <button onclick="sendMessage()" id="sendButton">Send</button>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="info-section">
+                <h3>System Info</h3>
+                <p>AI-Powered Knowledge Assistant</p>
+                <p>No authentication required</p>
+                <p>Ready to help with your queries!</p>
+            </div>
+            
+            <h3>Sample Queries</h3>
+            <div class="sample-queries">
+                <div class="query-category">
+                    <h4>Database Queries</h4>
+                    <button class="query-button" onclick="useSampleQuery('Show me the top 5 employees by sales revenue')">
+                        Top 5 employees by sales revenue
+                    </button>
+                    <button class="query-button" onclick="useSampleQuery('How many employees are in the Engineering department?')">
+                        Engineering department count
+                    </button>
+                    <button class="query-button" onclick="useSampleQuery('List all active projects with their budgets')">
+                        Active projects and budgets
+                    </button>
+                </div>
+
+                <div class="query-category">
+                    <h4>Document Queries</h4>
+                    <button class="query-button" onclick="useSampleQuery('What are the employee benefits?')">
+                        Employee benefits policy
+                    </button>
+                    <button class="query-button" onclick="useSampleQuery('What are the remote work policies?')">
+                        Remote work policies
+                    </button>
+                    <button class="query-button" onclick="useSampleQuery('What was discussed in the latest engineering standup?')">
+                        Engineering standup notes
+                    </button>
+                </div>
+
+                <div class="query-category">
+                    <h4>Hybrid Queries</h4>
+                    <button class="query-button" onclick="useSampleQuery('Show me sales data and related policies')">
+                        Sales data and policies
+                    </button>
+                    <button class="query-button" onclick="useSampleQuery('List project managers and their meeting notes')">
+                        Project managers and notes
+                    </button>
+                </div>
+            </div>
+
+            <div class="system-info">
+                <h4>System Status</h4>
+                <p id="systemStatus">Checking...</p>
+                <p id="databaseStatus">Database: Checking...</p>
+                <p id="documentsStatus">Documents: Checking...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let isConnected = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkHealth();
+        });
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const health = await response.json();
+                
+                updateStatus(health);
+            } catch (error) {
+                console.error('Health check failed:', error);
+                updateStatus({
+                    status: 'unhealthy',
+                    agent_ready: false,
+                    database_connected: false,
+                    documents_available: false
+                });
+            }
+        }
+
+        function updateStatus(health) {
+            const statusElement = document.getElementById('status');
+            const systemStatus = document.getElementById('systemStatus');
+            const databaseStatus = document.getElementById('databaseStatus');
+            const documentsStatus = document.getElementById('documentsStatus');
+
+            isConnected = health.status === 'healthy';
+            
+            if (isConnected) {
+                statusElement.className = 'status';
+                systemStatus.textContent = 'System: Online';
+            } else {
+                statusElement.className = 'status offline';
+                systemStatus.textContent = 'System: Offline';
+            }
+
+            databaseStatus.textContent = `Database: ${health.database_connected ? 'Connected' : 'Disconnected'}`;
+            documentsStatus.textContent = `Documents: ${health.documents_available ? 'Available' : 'Unavailable'}`;
+        }
+
+        function useSampleQuery(query) {
+            document.getElementById('queryInput').value = query;
+            sendMessage();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+
+
+        async function sendMessage() {
+            const input = document.getElementById('queryInput');
+            const query = input.value.trim();
+            
+            if (!query) return;
+
+            // Add user message
+            addMessage(query, 'user');
+            input.value = '';
+
+            // Show loading
+            const loading = document.getElementById('loading');
+            const sendButton = document.getElementById('sendButton');
+            loading.classList.add('show');
+            sendButton.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query: query })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addMessage(data.response, 'assistant', data);
+                    
+                    // Display chart if available
+                    if (data.chart) {
+                        displayChart(data.chart);
+                    }
+                } else {
+                    addMessage(`Error: ${data.detail || 'Failed to process query'}`, 'assistant');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Sorry, I encountered an error while processing your query. Please try again.', 'assistant');
+            } finally {
+                loading.classList.remove('show');
+                sendButton.disabled = false;
+            }
+        }
+
+        function addMessage(content, sender, metadata = null) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = sender === 'user' ? 'U' : 'AI';
+
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            messageContent.innerHTML = content;
+
+            const meta = document.createElement('div');
+            meta.className = 'message-meta';
+            meta.textContent = new Date().toLocaleTimeString();
+
+            messageContent.appendChild(meta);
+
+            // Add response details if available
+            if (metadata && sender === 'assistant') {
+                const details = document.createElement('div');
+                details.className = 'response-details';
+                
+                let detailsHtml = '<h5>Response Details</h5>';
+                if (metadata.query_type) {
+                    detailsHtml += `<p><strong>Query Type:</strong> ${metadata.query_type}</p>`;
+                }
+                if (metadata.confidence !== null) {
+                    detailsHtml += `<p><strong>Confidence:</strong> ${(metadata.confidence * 100).toFixed(1)}%</p>`;
+                }
+                if (metadata.processing_time) {
+                    detailsHtml += `<p><strong>Processing Time:</strong> ${metadata.processing_time}s</p>`;
+                }
+                if (metadata.sql_generated) {
+                    detailsHtml += `<p><strong>SQL Generated:</strong> <code>${metadata.sql_generated}</code></p>`;
+                }
+                if (metadata.documents_searched) {
+                    detailsHtml += `<p><strong>Documents Searched:</strong> ${metadata.documents_searched.join(', ')}</p>`;
+                }
+                
+                details.innerHTML = detailsHtml;
+                messageContent.appendChild(details);
+            }
+
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(messageContent);
+            messagesContainer.appendChild(messageDiv);
+
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function displayChart(chartData) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const chartDiv = document.createElement('div');
+            chartDiv.className = 'chart-container';
+            
+            const img = document.createElement('img');
+            img.src = chartData;
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.style.borderRadius = '8px';
+            img.style.marginTop = '10px';
+            
+            chartDiv.appendChild(img);
+            messagesContainer.appendChild(chartDiv);
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    </script>
+</body>
+</html>

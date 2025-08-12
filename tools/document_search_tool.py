@@ -9,7 +9,7 @@ from typing import List, Dict, Any
 from dotenv import load_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 from langchain.tools import Tool
 
 
@@ -23,7 +23,13 @@ class DocumentSearchTool:
     """Embeds and searches internal documents using OpenAI and ChromaDB."""
 
     def __init__(self, documents_dir: str = "documents", persist_dir: str = "vectorstore") -> None:
-        load_dotenv()
+        try:
+            load_dotenv()
+        except Exception as e:
+            print(f"Warning: Could not load .env file in document search tool: {e}")
+            # Set environment variables manually (use placeholder)
+            os.environ["OPENAI_API_KEY"] = "your-api-key-here"
+            
         self.documents_dir = documents_dir
         self.persist_dir = persist_dir
         self.embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
