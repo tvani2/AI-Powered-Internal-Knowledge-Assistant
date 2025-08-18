@@ -2,6 +2,9 @@
 
 An intelligent assistant that automatically decides when to use database vs documents and generates SQL from natural language queries.
 
+<img width="1200" height="800" alt="Screenshot (481)" src="https://github.com/user-attachments/assets/53065f1d-7c38-4653-b3df-fff483c28dde" />
+
+
 ## Project Goal
 
 Create a unified AI system that can:
