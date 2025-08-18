@@ -49,7 +49,7 @@ class ChartGenerator:
     def _parse_data_string(self, data: str) -> Optional[pd.DataFrame]:
         """Parse data string into DataFrame"""
         try:
-            # Look for table-like data with | separators
+            # Look for table-like data with | separators (old format)
             if '|' in data:
                 lines = [line.strip() for line in data.split('\n') if line.strip() and '|' in line]
                 if len(lines) < 2:
@@ -67,11 +67,81 @@ class ChartGenerator:
                     df = pd.DataFrame(rows, columns=header)
                     # Convert numeric columns
                     for col in df.columns:
-                        df[col] = pd.to_numeric(df[col], errors='ignore')
+                        try:
+                            df[col] = pd.to_numeric(df[col])
+                        except (ValueError, TypeError):
+                            # Keep as string if conversion fails
+                            pass
+                    return df
+            
+            # Look for clean table format without | separators (new format)
+            else:
+                lines = [line.strip() for line in data.split('\n') if line.strip()]
+                if len(lines) < 3:  # Need header, separator, and at least one data row
+                    return None
+                
+                # Check if it's a simple table format (new format without special characters)
+                # Look for a line that contains only dashes (separator line)
+                separator_index = -1
+                for i, line in enumerate(lines):
+                    if line.replace('-', '').replace(' ', '') == '' and len(line) > 5:
+                        separator_index = i
+                        break
+                
+                if separator_index != -1 and separator_index > 0:
+                    # Parse simple table format
+                    header_line = lines[separator_index - 1]
+                    # Split by multiple spaces to get columns
+                    header = [col.strip() for col in header_line.split('  ') if col.strip()]
+                    
+                    # Parse data rows (lines after separator)
+                    rows = []
+                    for line in lines[separator_index + 1:]:
+                        if line.strip() and not line.startswith('...'):  # Skip summary lines
+                            # Split by multiple spaces to get columns
+                            cols = [col.strip() for col in line.split('  ') if col.strip()]
+                            if len(cols) == len(header):
+                                rows.append(cols)
+                
+                else:
+                    # Find the separator line (contains only dashes) - old format
+                    separator_index = -1
+                    for i, line in enumerate(lines):
+                        if line.replace('-', '').replace(' ', '') == '' and len(line) > 5:
+                            separator_index = i
+                            break
+                    
+                    if separator_index == -1 or separator_index == 0:
+                        return None
+                    
+                    # Parse header (line before separator)
+                    header_line = lines[separator_index - 1]
+                    # Split by multiple spaces to get columns
+                    header = [col.strip() for col in header_line.split('  ') if col.strip()]
+                    
+                    # Parse data rows (lines after separator)
+                    rows = []
+                    for line in lines[separator_index + 1:]:
+                        if line.strip() and not line.startswith('...'):  # Skip summary lines
+                            # Split by multiple spaces to get columns
+                            cols = [col.strip() for col in line.split('  ') if col.strip()]
+                            if len(cols) == len(header):
+                                rows.append(cols)
+                
+                if rows:
+                    df = pd.DataFrame(rows, columns=header)
+                    # Convert numeric columns
+                    for col in df.columns:
+                        try:
+                            df[col] = pd.to_numeric(df[col])
+                        except (ValueError, TypeError):
+                            # Keep as string if conversion fails
+                            pass
                     return df
             
             return None
-        except Exception:
+        except Exception as e:
+            print(f"Error parsing data: {e}")
             return None
     
     def _determine_chart_type(self, query: str, df: pd.DataFrame) -> str:
@@ -100,7 +170,7 @@ class ChartGenerator:
     def _create_bar_chart(self, df: pd.DataFrame, query: str) -> str:
         """Create a bar chart"""
         try:
-            plt.figure(figsize=(10, 6))
+            plt.figure(figsize=(8, 5))
             
             # Find numeric columns
             numeric_cols = df.select_dtypes(include=['number']).columns
@@ -129,7 +199,7 @@ class ChartGenerator:
     def _create_line_chart(self, df: pd.DataFrame, query: str) -> str:
         """Create a line chart"""
         try:
-            plt.figure(figsize=(10, 6))
+            plt.figure(figsize=(8, 5))
             
             numeric_cols = df.select_dtypes(include=['number']).columns
             if len(numeric_cols) == 0:
@@ -179,7 +249,7 @@ class ChartGenerator:
     def _create_scatter_chart(self, df: pd.DataFrame, query: str) -> str:
         """Create a scatter chart"""
         try:
-            plt.figure(figsize=(10, 6))
+            plt.figure(figsize=(8, 5))
             
             numeric_cols = df.select_dtypes(include=['number']).columns
             if len(numeric_cols) < 2:
@@ -203,7 +273,7 @@ class ChartGenerator:
         """Save chart to base64 string"""
         try:
             buffer = io.BytesIO()
-            plt.savefig(buffer, format='png', dpi=300, bbox_inches='tight')
+            plt.savefig(buffer, format='png', dpi=150, bbox_inches='tight')
             buffer.seek(0)
             image_base64 = base64.b64encode(buffer.getvalue()).decode()
             plt.close()

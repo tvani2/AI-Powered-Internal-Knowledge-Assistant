@@ -12,107 +12,141 @@ Create a unified AI system that can:
 - **Visualize results** with charts for numeric data
 
 
-## Files Overview
+## Quick Start
 
-| File | Description |
-|------|-------------|
-| `api.py` | FastAPI backend with chat endpoint |
-| `streamlit_app.py` | Advanced Streamlit UI |
-| `start_app.py` | Easy startup script for web interface |
-| `start_streamlit.py` | Easy startup script for Streamlit UI |
-| `intelligent_agent.py` | Core AI agent with query analysis |
-| `database.py` | Database setup and management |
-| `setup_database.py` | Database initialization script |
-| `database_schema.md` | Detailed database schema documentation |
-| `chart_generator.py` | Matplotlib charts for data visualization |
-| `tools/database_tool.py` | SQL execution and schema tools |
-| `tools/document_search_tool.py` | Vector search for documents |
-| `static/index.html` | Web chat interface |
-| `requirements.txt` | Python dependencies |
-| `.env` | Environment variables (create from template) |
-| `.gitignore` | Git ignore patterns |
+### Prerequisites
+- Python 3.10+ 
+- OpenAI API key
 
-## Quick Setup
+### Setup
 
-### 1. Environment Setup
-```bash
-git clone <repository>
-cd AI-Powered-Internal-Knowledge-Assistant
-python -m venv venv
-venv\Scripts\activate  # Windows
-pip install -r requirements.txt
-```
+1. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### 2. Configuration
-```bash
-# Create .env file with your OpenAI API key
-echo "OPENAI_API_KEY=your_key_here" > .env
-echo "OPENAI_MODEL=gpt-4o-mini" >> .env
-```
+2. **Set environment variables:**
+   ```bash
+   # Windows
+   set OPENAI_API_KEY=your_api_key_here
+   
+   # Linux/Mac
+   export OPENAI_API_KEY=your_api_key_here
+   ```
 
-### 3. Initialize Database
-```bash
-python setup_database.py
-```
+3. **Initialize database:**
+   ```bash
+   python setup_database.py
+   ```
 
-### 4. Run Application
-```bash
-python start_app.py
-# Open http://localhost:8000
-```
+4. **Start the application:**
+   ```bash
+   python start_app.py
+   ```
 
-## Example Queries
-
-### Database Queries
-- "Show me the top 5 employees by sales revenue"
-- "How many employees are in Engineering department?"
-- "List all active projects with budgets"
-- "Find employees who joined last year"
-
-### Document Queries
-- "What are the remote work policies?"
-- "What was discussed in the latest engineering standup?"
-- "What are the employee benefits?"
-- "What is the system architecture?"
-
-### Hybrid Queries
-- "Show me sales data and related policies"
-- "List project managers and their meeting notes"
+5. **Open your browser:**
+   Navigate to `http://localhost:8000`
 
 ## Features
 
-- **Smart Query Analysis**: Automatically detects query type (DB vs docs)
-- **SQL Generation**: Converts natural language to SQLite queries
-- **Document Search**: Semantic search using vector embeddings
-- **Data Visualization**: Automatic charts for numeric results
-- **Pretty Output**: Formatted tables and bullet-point summaries
-- **Dual UI**: Web interface + Streamlit app
-- **Query Logging**: Track and debug all interactions
+###  **Intelligent Query Routing**
+- Automatically determines whether to query database or search documents
+- Uses confidence scoring to choose the best data source
+- Provides hybrid responses combining multiple sources
 
-## API Endpoints
+###  **Database Operations**
+- Natural language to SQL conversion
+- Employee data, sales records, inventory management
+- Automatic chart generation for numeric data
+- Sample data included for testing
 
-- `GET /` - Web chat interface
-- `POST /chat` - Main chat endpoint
-- `GET /health` - System status
-- `GET /capabilities` - Available features
-- `GET /logs` - Query history
+###  **Document Search**
+- Semantic search across company documents
+- HR policies, meeting notes, technical documentation
+- Context-aware responses with source attribution
 
-## Data Sources
+###  **Modern Web Interface**
+- Clean, responsive design
+- Real-time chat interface
+- Sample queries for easy testing
+- System information display
 
-**Database Tables:**
-- `employees` (id, name, department, role, salary, etc.)
-- `sales` (id, date, product, revenue, employee_id, etc.)
-- `projects` (id, name, status, budget, manager_id, etc.)
+## Usage Examples
 
-**Document Categories:**
-- HR Policies (benefits, performance, remote work)
-- Meeting Notes (standups, reviews, development)
-- Technical Docs (architecture, API guides)
+### Database Queries
+- "Show me all employees in the Engineering department"
+- "What's the total sales for Q1 2024?"
+- "Create a chart of employee salaries by department"
 
-## Use Cases
+### Document Queries
+- "What's our remote work policy?"
+- "What was discussed in the last executive meeting?"
+- "How do I integrate with the API?"
 
-- **HR Analytics**: Employee performance, department insights
-- **Sales Analysis**: Revenue trends, top performers
-- **Project Management**: Status tracking, budget analysis
-- **Policy Research**: Quick access to company guidelines
-- **Meeting Insights**: Historical discussion summaries
+### Hybrid Queries
+- "Show me engineering employees and their benefits"
+- "What's our sales performance and what policies affect it?"
+
+## Project Structure
+
+```
+AI-Powered-Internal-Knowledge-Assistant/
+├── api.py                 # FastAPI backend
+├── start_app.py          # Web interface startup
+├── intelligent_agent.py  # Core AI logic
+├── database.py           # Database operations
+├── chart_generator.py    # Visualization
+├── setup_database.py     # Database setup
+├── requirements.txt      # Dependencies
+├── database_schema.md    # Schema documentation
+├── company.db           # SQLite database
+├── .gitignore           # Git ignore patterns
+├── static/
+│   └── index.html       # Web frontend
+├── tools/
+│   ├── database_tool.py
+│   └── document_search_tool.py
+└── documents/
+    ├── hr_policies/
+    ├── meeting_notes/
+    └── technical_docs/
+```
+
+## Configuration
+
+### Environment Variables
+- `OPENAI_API_KEY`: Your OpenAI API key (required)
+
+### Customization
+- **Add Documents**: Place files in the `documents/` subdirectories
+- **Modify Database**: Edit `setup_database.py` for different sample data
+- **Change Port**: Modify the port in `start_app.py`
+
+## Troubleshooting
+
+### Common Issues
+- **API Key Error**: Ensure `OPENAI_API_KEY` is set correctly
+- **Database Error**: Run `python setup_database.py` to recreate database
+- **Port Already in Use**: Change the port in `start_app.py`
+
+### Debugging
+- **Enable Debug Mode**: Uncomment the Response Details section in `static/index.html`
+- **View Logs**: Check console output for detailed logging
+- **Database Schema**: See `database_schema.md` for table structures
+
+## Document Categories
+
+### HR Policies (`documents/hr_policies/`)
+- Employee benefits and policies
+- Performance management guidelines
+- Remote work policies
+
+### Meeting Notes (`documents/meeting_notes/`)
+- Engineering team standups
+- Executive quarterly reviews
+- Product development meetings
+
+### Technical Docs (`documents/technical_docs/`)
+- API integration guides
+- System architecture documentation
+- Technical specifications

@@ -26,8 +26,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('app.log')
+        logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
@@ -96,7 +95,6 @@ except Exception as e:
     agent = None
     db_manager = None
 
-# No authentication required - open access
 
 # Pydantic models for request/response
 class ChatRequest(BaseModel):
@@ -284,7 +282,7 @@ async def chat(request: ChatRequest):
         response_data["response"] = _format_response(response_data["response"], analysis.query_type.value)
         
         # Generate chart for database queries with numeric data
-        if analysis.query_type.value == "database" and "|" in response_data["response"]:
+        if analysis.query_type.value == "database" and "Database Results:" in response_data["response"]:
             chart_data = chart_generator.generate_chart(response_data["response"], request.query)
             if chart_data:
                 response_data["chart"] = chart_data
@@ -386,19 +384,14 @@ def _categorize_document_queries(queries):
 def _format_response(response: str, query_type: str) -> str:
     """Format response for better readability based on query type"""
     if query_type == "database":
-        # Format database results as tables
-        if "|" in response or "Employee" in response or "Sales" in response:
+        # Format database results as tables - preserve the clean table format
+        if "Database Results:" in response:
             lines = response.split('\n')
             formatted_lines = []
             for line in lines:
-                if '|' in line:
-                    # Format table rows
-                    formatted_lines.append(line.strip())
-                elif any(keyword in line for keyword in ["Employee", "Sales", "Project", "Department"]):
-                    # Format headers
-                    formatted_lines.append(f"\n**{line.strip()}**")
-                else:
-                    formatted_lines.append(line.strip())
+                if line.strip() and not line.startswith('|'):  # Skip empty lines and old pipe format
+                    # Preserve the clean table format
+                    formatted_lines.append(line)
             return '\n'.join(formatted_lines)
     
     elif query_type == "document":
