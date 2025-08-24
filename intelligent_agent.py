@@ -284,6 +284,34 @@ class IntelligentAgent:
     5. Re-rank results for better relevance
     """
     
+    # Centralized response dictionary for personal questions
+    PERSONAL_RESPONSES = {
+        "age": {
+            "keywords": ["how old are you", "what is your age", "when were you born"],
+            "response": "I'm an AI assistant, so I don't have an age in the traditional sense. I was created to help with company knowledge and data queries. How can I assist you with your work-related questions?"
+        },
+        "human": {
+            "keywords": ["are you real", "are you human", "do you have feelings"],
+            "response": "I'm an AI assistant designed to help with company information and data analysis. I'm not human, but I'm here to help you with your work-related questions!"
+        },
+        "opinions": {
+            "keywords": ["what do you think", "do you like", "do you enjoy", "what is your opinion"],
+            "response": "I'm an AI assistant focused on helping with company data and policies. I don't have personal opinions or preferences, but I'm happy to help you find the information you need!"
+        },
+        "identity": {
+            "keywords": ["what is your name", "who are you", "what are you"],
+            "response": "I'm an AI-powered internal knowledge assistant. I help employees find information about company policies, data, and documentation. How can I help you today?"
+        },
+        "capabilities": {
+            "keywords": ["what can you do", "how do you work", "what are your capabilities"],
+            "response": "I can help you with:<ul><li>Company data queries</li><li>Policy information</li><li>Meeting notes</li><li>Technical documentation</li></ul>I use semantic search and database integration to provide accurate answers."
+        },
+        "personal_life": {
+            "keywords": ["do you sleep", "do you eat", "do you dream", "are you married", "do you have family", "do you have friends"],
+            "response": "I'm an AI assistant designed to help with company information and data. I don't have personal experiences or feelings, but I'm here to help you with your work-related questions!"
+        }
+    }
+    
     def __init__(self):
         try:
             load_dotenv()
@@ -739,10 +767,11 @@ Follow these steps strictly:
    "I could not find that information in the available documents."
 5. Never invent or guess information. Do not use outside knowledge.
 6. If the user's query is ambiguous, ask a clarifying question before answering.
+7. Do not greet the user or introduce yourself - stay focused on answering the question.
+8. Do not repeat introductions or capabilities unless specifically asked.
 
-Output format:
-- Direct answer to the question in natural language.
-- If useful, you may cite or briefly quote the relevant part of the context.
+Provide answers as clear, natural paragraphs. 
+Do not use bolding, bullets, or Markdown/HTML formatting.
 
 User Question: "{query}"
 
@@ -1108,8 +1137,12 @@ Please try rephrasing your question or ask about one of these topics. For exampl
         return content.strip()
     
     def _format_document_content(self, content: str) -> str:
-        """Format document content for better readability with proper bullet points and structure"""
+        """Format document content for better readability with proper HTML structure"""
         if not content:
+            return content
+        
+        # If content already contains HTML tags, return as-is
+        if '<' in content and '>' in content:
             return content
         
         lines = content.split('\n')
@@ -1123,24 +1156,22 @@ Please try rephrasing your question or ask about one of these topics. For exampl
             
             # Handle bullet points (•, -, *)
             if line.startswith(('•', '-', '*')):
-                # Ensure bullet points start at the beginning of the line
-                bullet_char = line[0]
                 rest_of_line = line[1:].strip()
-                formatted_lines.append(f"{bullet_char} {rest_of_line}")
+                formatted_lines.append(f"<li>{rest_of_line}</li>")
             
             # Handle section headers (ALL CAPS with optional spaces/dashes)
             elif line.isupper() and len(line) > 5:
                 formatted_lines.append('')  # Add space before headers
-                formatted_lines.append(f"**{line}**")
+                formatted_lines.append(f"<h3>{line}</h3>")
                 formatted_lines.append('')  # Add space after headers
             
             # Handle numbered lists (1., 2., etc.)
             elif line and line[0].isdigit() and ('.' in line[:5] or ')' in line[:5]):
-                formatted_lines.append(line)
+                formatted_lines.append(f"<li>{line}</li>")
             
             # Handle lines with dates/times (contains Date:, Time:, Location:)
             elif any(keyword in line for keyword in ['Date:', 'Time:', 'Location:', 'STATUS', 'GOAL', 'TARGET']):
-                formatted_lines.append(f"**{line}**")
+                formatted_lines.append(f"<strong>{line}</strong>")
             
             # Regular lines
             else:
@@ -1159,94 +1190,150 @@ Please try rephrasing your question or ask about one of these topics. For exampl
         """
         Main method to process a user query intelligently
         """
-        # Step 1: Analyze the query
+        # Step 1: Check for personal/out-of-scope questions first
+        personal_questions = self._is_personal_question(query)
+        if personal_questions:
+            return self._handle_personal_question(query)
+        
+        # Step 2: Handle conversational queries
+        if self._is_conversational_query(query):
+            return self._handle_conversational_query(query)
+        
+        # Step 3: Controller logic - try SQL first, then fallback to documents
+        return self._answer_query_controller(query)
+    
+    def _answer_query_controller(self, query: str) -> str:
+        """
+        Controller layer that implements the decision tree:
+        1. Try SQL query first
+        2. If SQL fails, try document retrieval
+        3. If both fail, return error message
+        """
+        # Step 1: Check if it's a structured (SQL) type question
+        if self._is_sql_question(query):
+            sql_result = self._run_sql_query(query)
+            if sql_result:  # non-empty result
+                return self._format_sql_result(sql_result)
+            # else fallback to docs
+        
+        # Step 2: Try document retrieval (RAG)
+        doc_result = self._run_doc_retrieval(query)
+        if doc_result:
+            return self._format_doc_result(doc_result)
+        
+        # Step 3: Both failed
+        return "I could not find that information in the available data."
+    
+    def _is_sql_question(self, query: str) -> bool:
+        """Check if the query is likely to need SQL/database access"""
         analysis = self.analyze_query(query)
+        return analysis.query_type in [QueryType.DATABASE, QueryType.HYBRID]
+    
+    def _run_sql_query(self, query: str) -> Optional[Dict[str, Any]]:
+        """Run SQL query and return results if successful"""
+        analysis = self.analyze_query(query)
+        sql = analysis.suggested_sql or self.generate_sql(query)
         
-        response_parts = []
+        if sql:
+            db_results = self.execute_database_query(sql)
+            if "error" not in db_results and db_results.get("rows"):
+                return db_results
         
-        # Step 2: Handle database queries
-        if analysis.query_type in [QueryType.DATABASE, QueryType.HYBRID]:
-            sql = analysis.suggested_sql or self.generate_sql(query)
-            
-            if sql:
-                db_results = self.execute_database_query(sql)
-                db_response = self.format_database_response(db_results)
-                response_parts.append(db_response)
-            else:
-                response_parts.append("Could not generate a valid SQL query for your request.")
+        return None
+    
+    def _format_sql_result(self, sql_result: Dict[str, Any]) -> str:
+        """Format SQL results into clean natural language"""
+        return self.format_database_response(sql_result)
+    
+    def _run_doc_retrieval(self, query: str) -> Optional[List[Dict[str, Any]]]:
+        """Run document retrieval and return results if successful"""
+        analysis = self.analyze_query(query)
+        doc_queries = analysis.suggested_document_queries or [query]
+        doc_results = self.execute_document_search(doc_queries)
         
-        # Step 3: Handle document queries
-        if analysis.query_type in [QueryType.DOCUMENTS, QueryType.HYBRID]:
-            doc_queries = analysis.suggested_document_queries or [query]
-            doc_results = self.execute_document_search(doc_queries)
-            
-            if doc_results:
-                doc_response = self.format_document_response(doc_results)
-                response_parts.append(doc_response)
-            else:
-                response_parts.append("No relevant documents found for your query.")
+        if doc_results:
+            return doc_results
         
-        # Step 4: Handle conversational queries
-        if analysis.query_type == QueryType.CONVERSATIONAL:
-            response_parts.append(
-                "Hello! I'm doing well, thank you for asking! 😊 I'm here to help you with questions about:\n"
-                "• Employee benefits and policies\n"
-                "• Sales data and performance\n"
-                "• Project information\n"
-                "• Meeting notes and updates\n"
-                "• Technical documentation\n\n"
-                "What would you like to know about?"
-            )
+        return None
+    
+    def _format_doc_result(self, doc_results: List[Dict[str, Any]]) -> str:
+        """Format document results into clean natural language"""
+        return self.format_document_response(doc_results)
+    
+    def _is_conversational_query(self, query: str) -> bool:
+        """Check if the query is conversational"""
+        analysis = self.analyze_query(query)
+        return analysis.query_type == QueryType.CONVERSATIONAL
+    
+    def _handle_conversational_query(self, query: str) -> str:
+        """Handle conversational queries"""
+        return (
+            "Hello! I'm doing well, thank you for asking! I'm here to help you with questions about:<ul>"
+            "<li>Employee benefits and policies</li>"
+            "<li>Sales data and performance</li>"
+            "<li>Project information</li>"
+            "<li>Meeting notes and updates</li>"
+            "<li>Technical documentation</li></ul>"
+            "What would you like to know about?"
+        )
+    
+    def _is_personal_question(self, query: str) -> bool:
+        """Check if the query is a personal question about the AI assistant"""
+        query_lower = query.lower()
+        personal_keywords = [
+            'how old are you', 'what is your age', 'when were you born',
+            'are you real', 'are you human', 'do you have feelings',
+            'what do you think', 'do you like', 'do you enjoy',
+            'what is your name', 'who are you', 'what are you',
+            'do you sleep', 'do you eat', 'do you dream',
+            'are you married', 'do you have family', 'do you have friends'
+        ]
+        return any(keyword in query_lower for keyword in personal_keywords)
+    
+    def _handle_personal_question(self, query: str) -> str:
+        """Handle personal questions about the AI assistant"""
+        query_lower = query.lower()
         
-        # Step 5: Handle unknown queries (this should rarely happen now)
-        if analysis.query_type == QueryType.UNKNOWN:
-            # Try document search as fallback
-            doc_results = self.execute_document_search([query])
-            if doc_results:
-                doc_response = self.format_document_response(doc_results)
-                response_parts.append(doc_response)
-            else:
-                response_parts.append(
-                    "I'm not sure how to best answer your query. "
-                    "Could you please rephrase it or be more specific about what information you're looking for?"
-                )
+        # Centralized response dictionary
+        PERSONAL_RESPONSES = {
+            "age": {
+                "keywords": ["how old are you", "what is your age", "when were you born"],
+                "response": "I'm an AI assistant, so I don't have an age in the traditional sense. I was created to help with company knowledge and data queries. How can I assist you with your work-related questions?"
+            },
+            "human": {
+                "keywords": ["are you real", "are you human", "do you have feelings"],
+                "response": "I'm an AI assistant designed to help with company information and data analysis. I'm not human, but I'm here to help you with your work-related questions!"
+            },
+            "opinions": {
+                "keywords": ["what do you think", "do you like", "do you enjoy", "what is your opinion"],
+                "response": "I'm an AI assistant focused on helping with company data and policies. I don't have personal opinions or preferences, but I'm happy to help you find the information you need!"
+            },
+            "identity": {
+                "keywords": ["what is your name", "who are you", "what are you"],
+                "response": "I'm an AI-powered internal knowledge assistant. I help employees find information about company policies, data, and documentation. How can I help you today?"
+            },
+            "capabilities": {
+                "keywords": ["what can you do", "how do you work", "what are your capabilities"],
+                "response": "I can help you with company data queries, policy information, meeting notes, and technical documentation. I use semantic search and database integration to provide accurate answers."
+            },
+            "personal_life": {
+                "keywords": ["do you sleep", "do you eat", "do you dream", "are you married", "do you have family", "do you have friends"],
+                "response": "I'm an AI assistant designed to help with company information and data. I don't have personal experiences or feelings, but I'm here to help you with your work-related questions!"
+            }
+        }
         
-        # Combine responses
-        if len(response_parts) == 1:
-            return response_parts[0]
-        else:
-            return "\n\n".join(response_parts)
+        # Find matching response category
+        for category, data in PERSONAL_RESPONSES.items():
+            if any(keyword in query_lower for keyword in data["keywords"]):
+                return data["response"]
+        
+        # Default response for unmatched personal questions
+        return "I'm an AI assistant designed to help with company information and data. I don't have personal experiences or feelings, but I'm here to help you with your work-related questions!"
 
 
 def main():
     """Test the intelligent agent with sample queries"""
     agent = IntelligentAgent()
     
-    test_queries = [
-        "Show me the top 5 employees by sales revenue",
-        "What are the remote work policies?",
-        "List all active projects and their managers",
-        "What was discussed in the latest engineering standup?",
-        "How many employees are in the Engineering department?",
-        "What are the employee benefits?",
-        "Show sales performance by product category",
-        "What is the system architecture?",
-        "Find employees who joined in the last year",
-        "What are the performance management guidelines?",
-        "mid year health plan change",  # Added the specific query
-        "health plan mid year change",
-        "can I change my health insurance mid year"
-    ]
-    
-    print("=== Intelligent Agent Test ===\n")
-    
-    for i, query in enumerate(test_queries, 1):
-        print(f"Query {i}: {query}")
-        print("-" * 50)
-        response = agent.process_query(query)
-        print(response)
-        print("\n" + "="*80 + "\n")
-
-
 if __name__ == "__main__":
     main()

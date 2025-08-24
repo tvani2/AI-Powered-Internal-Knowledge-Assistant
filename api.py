@@ -18,8 +18,7 @@ from datetime import datetime
 
 # Import our agent
 from intelligent_agent import IntelligentAgent, QueryType
-from database import DatabaseManager
-from chart_generator import chart_generator
+from tools.database_tool import DatabaseTool
 
 # Configure detailed logging
 logging.basicConfig(
@@ -82,9 +81,9 @@ try:
     agent = IntelligentAgent()
     logger.info("IntelligentAgent created successfully")
     
-    logger.info("Creating DatabaseManager...")
-    db_manager = DatabaseManager()
-    logger.info("DatabaseManager created successfully")
+    logger.info("Creating DatabaseTool...")
+    db_manager = DatabaseTool()
+    logger.info("DatabaseTool created successfully")
     
     logger.info("Intelligent agent and database manager initialized successfully")
 except Exception as e:
@@ -281,25 +280,9 @@ async def chat(request: ChatRequest):
         # Format response for better readability
         response_data["response"] = _format_response(response_data["response"], analysis.query_type.value)
         
-        # Generate chart for database queries with numeric data
-        if analysis.query_type.value == "database" and "Database Results:" in response_data["response"]:
-            chart_data = chart_generator.generate_chart(response_data["response"], request.query)
-            if chart_data:
-                response_data["chart"] = chart_data
+        # Chart generation removed - functionality not available
         
-        # Log the query
-        if db_manager:
-            db_manager.log_query(
-                user_query=request.query,
-                query_type=analysis.query_type.value,
-                confidence=analysis.confidence,
-                sql_generated=analysis.suggested_sql,
-                documents_searched=", ".join(analysis.suggested_document_queries) if analysis.suggested_document_queries else None,
-                response=response,
-                processing_time=processing_time,
-                user_id=user_id,
-                session_id=session_id
-            )
+        # Query logging removed - DatabaseTool doesn't support logging
         
 
         
@@ -311,18 +294,7 @@ async def chat(request: ChatRequest):
         logger.error(f"Error processing query: {e}")
         processing_time = time.time() - start_time
         
-        # Log the error
-        if db_manager:
-            db_manager.log_query(
-                user_query=request.query,
-                query_type="error",
-                confidence=0.0,
-                response=f"Error: {str(e)}",
-                processing_time=processing_time,
-                error_message=str(e),
-                user_id=user_id,
-                session_id=session_id
-            )
+        # Error logging removed - DatabaseTool doesn't support logging
         
 
         
