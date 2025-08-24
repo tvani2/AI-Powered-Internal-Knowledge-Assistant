@@ -5,13 +5,18 @@ from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 import pandas as pd
+import numpy as np
+from pathlib import Path
 
 from dotenv import load_dotenv
 from langchain.agents import AgentExecutor, initialize_agent
 from langchain.agents import AgentType
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.prompts.chat import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langchain.schema import BaseMessage, HumanMessage, SystemMessage
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+import faiss
+import pickle
 
 from tools.database_tool import DatabaseTool
 from tools.document_search_tool import DocumentSearchTool
@@ -34,12 +39,249 @@ class QueryAnalysis:
     suggested_document_queries: Optional[List[str]] = None
 
 
+class DocumentPreprocessor:
+    """
+    Handles document preprocessing, chunking, and vector store operations
+    """
+    
+    def __init__(self, chunk_size: int = 300, chunk_overlap: int = 50):
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        self.embeddings = None
+        self.vector_store = None
+        self.chunks = []
+        
+        # Initialize embeddings if API key is available
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key and api_key != "your-api-key-here":
+            try:
+                self.embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+                print("Embeddings initialized successfully")
+            except Exception as e:
+                print(f"Warning: Could not initialize embeddings: {e}")
+        else:
+            print("Warning: OPENAI_API_KEY not set. Vector search will be disabled.")
+    
+    def chunk_document(self, content: str, source: str) -> List[Dict[str, Any]]:
+        """Chunk a single document into smaller sections"""
+        if not content.strip():
+            return []
+        
+        # Use RecursiveCharacterTextSplitter for better chunking
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
+            length_function=len,
+            separators=["\n\n", "\n", ". ", " ", ""]
+        )
+        
+        chunks = splitter.split_text(content)
+        
+        return [
+            {
+                "content": chunk.strip(),
+                "source": source,
+                "chunk_id": f"{source}_{i}",
+                "length": len(chunk)
+            }
+            for i, chunk in enumerate(chunks) if chunk.strip()
+        ]
+    
+    def chunk_all_documents(self, documents_dir: str) -> List[Dict[str, Any]]:
+        """Chunk all documents in the specified directory"""
+        all_chunks = []
+        documents_path = Path(documents_dir)
+        
+        if not documents_path.exists():
+            print(f"Documents directory {documents_dir} not found")
+            return all_chunks
+        
+        # Find all text files recursively
+        text_files = list(documents_path.rglob("*.txt")) + list(documents_path.rglob("*.md"))
+        
+        for file_path in text_files:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                source = str(file_path.relative_to(documents_path))
+                chunks = self.chunk_document(content, source)
+                all_chunks.extend(chunks)
+                
+                print(f"Chunked {source}: {len(chunks)} chunks")
+                
+            except Exception as e:
+                print(f"Error processing {file_path}: {e}")
+        
+        print(f"Total chunks created: {len(all_chunks)}")
+        return all_chunks
+    
+    def create_vector_store(self, chunks: List[Dict[str, Any]], store_path: str) -> bool:
+        """Create vector store from chunks"""
+        if not self.embeddings:
+            print("Embeddings not available. Cannot create vector store.")
+            return False
+        
+        if not chunks:
+            print("No chunks provided for vector store creation.")
+            return False
+        
+        try:
+            # Extract content and metadata
+            texts = [chunk["content"] for chunk in chunks]
+            metadatas = [
+                {
+                    "source": chunk["source"],
+                    "chunk_id": chunk["chunk_id"],
+                    "length": chunk["length"]
+                }
+                for chunk in chunks
+            ]
+            
+            # Create embeddings
+            print("Creating embeddings...")
+            embeddings_list = self.embeddings.embed_documents(texts)
+            
+            # Convert to numpy array
+            embeddings_array = np.array(embeddings_list).astype('float32')
+            
+            # Create FAISS index
+            dimension = embeddings_array.shape[1]
+            index = faiss.IndexFlatIP(dimension)  # Inner product for cosine similarity
+            index.add(embeddings_array)
+            
+            # Save index and metadata
+            store_path = Path(store_path)
+            store_path.mkdir(exist_ok=True)
+            
+            faiss.write_index(index, str(store_path / "index.faiss"))
+            
+            # Save chunks and metadata
+            with open(store_path / "index.pkl", "wb") as f:
+                pickle.dump({
+                    "chunks": chunks,
+                    "metadatas": metadatas,
+                    "embeddings": embeddings_list
+                }, f)
+            
+            self.vector_store = {
+                "index": index,
+                "chunks": chunks,
+                "metadatas": metadatas,
+                "embeddings": embeddings_list
+            }
+            
+            print(f"Vector store created successfully at {store_path}")
+            return True
+            
+        except Exception as e:
+            print(f"Error creating vector store: {e}")
+            return False
+    
+    def load_vector_store(self, store_path: str = "vector_store") -> bool:
+        """Load existing vector store"""
+        try:
+            store_path = Path(store_path)
+            index_path = store_path / "index.faiss"
+            metadata_path = store_path / "index.pkl"
+            
+            if not index_path.exists() or not metadata_path.exists():
+                print("Vector store files not found")
+                return False
+            
+            # Load FAISS index
+            index = faiss.read_index(str(index_path))
+            
+            # Load metadata
+            with open(metadata_path, "rb") as f:
+                data = pickle.load(f)
+            
+            self.vector_store = {
+                "index": index,
+                "chunks": data["chunks"],
+                "metadatas": data["metadatas"],
+                "embeddings": data["embeddings"]
+            }
+            
+            print("Vector store loaded successfully")
+            return True
+            
+        except Exception as e:
+            print(f"Error loading vector store: {e}")
+            return False
+    
+    def search_documents(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
+        """Search documents using vector similarity"""
+        if not self.vector_store or not self.embeddings:
+            print("Vector store or embeddings not available")
+            return []
+        
+        try:
+            # Create query embedding
+            query_embedding = self.embeddings.embed_query(query)
+            query_vector = np.array([query_embedding]).astype('float32')
+            
+            # Search in FAISS index
+            scores, indices = self.vector_store["index"].search(query_vector, k)
+            
+            results = []
+            for i, (score, idx) in enumerate(zip(scores[0], indices[0])):
+                if idx < len(self.vector_store["chunks"]):
+                    chunk = self.vector_store["chunks"][idx]
+                    metadata = self.vector_store["metadatas"][idx]
+                    
+                    results.append({
+                        "content": chunk["content"],
+                        "source": chunk["source"],
+                        "score": float(score),
+                        "method": "vector_search",
+                        "chunk_id": chunk["chunk_id"]
+                    })
+            
+            return results
+            
+        except Exception as e:
+            print(f"Error searching documents: {e}")
+            return []
+    
+    def re_rank_results(self, results: List[Dict[str, Any]], query: str) -> List[Dict[str, Any]]:
+        """Re-rank results based on relevance to the query"""
+        if not results:
+            return results
+        
+        # Simple re-ranking based on content relevance
+        query_lower = query.lower()
+        query_words = set(word for word in query_lower.split() if len(word) > 2)
+        
+        for result in results:
+            content_lower = result["content"].lower()
+            
+            # Calculate word overlap score
+            content_words = set(word for word in content_lower.split() if len(word) > 2)
+            word_overlap = len(query_words.intersection(content_words))
+            overlap_score = word_overlap / len(query_words) if query_words else 0
+            
+            # Combine vector similarity with word overlap
+            vector_score = result["score"]
+            final_score = (vector_score * 0.7) + (overlap_score * 0.3)
+            
+            result["final_score"] = final_score
+            result["word_overlap"] = overlap_score
+        
+        # Sort by final score
+        results.sort(key=lambda x: x["final_score"], reverse=True)
+        
+        return results
+
+
 class IntelligentAgent:
     """
     An intelligent agent that can:
     1. Analyze user queries to determine whether to use database or documents
     2. Generate SQL automatically from natural language queries
     3. Provide hybrid responses combining both data sources
+    4. Use vector search for semantic document retrieval
+    5. Re-rank results for better relevance
     """
     
     def __init__(self):
@@ -71,9 +313,14 @@ class IntelligentAgent:
         
         self.db_tool = DatabaseTool()
         
-        # Initialize document search - use simple file search by default
-        self.doc_tool = None
-        print("Document search will use simple file-based search")
+        # Initialize document preprocessor and vector store
+        self.doc_preprocessor = DocumentPreprocessor(chunk_size=300, chunk_overlap=50)
+        self.vector_store_loaded = self.doc_preprocessor.load_vector_store()
+        
+        if self.vector_store_loaded:
+            print("Vector store loaded successfully - semantic search enabled")
+        else:
+            print("Vector store not available - falling back to simple search")
         
         # Initialize document summaries
         self.document_summaries = self._load_document_summaries()
@@ -427,11 +674,108 @@ SQL:"""
     
     def execute_document_search(self, queries: List[str]) -> List[Dict[str, Any]]:
         """Execute document searches and return results"""
-        # Always use simple file search for now
+        # Always try vector search first for semantic search
+        if self.vector_store_loaded:
+            print("Using vector search for semantic document retrieval...")
+            vector_results = self._vector_document_search(queries)
+            if vector_results:
+                return vector_results
+        
+        # Fall back to simple search only if vector search fails
+        print("Falling back to simple document search...")
+        return self._simple_document_search(queries)
+    
+    def _vector_document_search(self, queries: List[str]) -> List[Dict[str, Any]]:
+        """Search documents using vector similarity"""
+        all_results = []
+        
+        for query in queries:
+            print(f"Searching for: '{query}' using vector search...")
+            
+            # Get vector search results with more candidates
+            vector_results = self.doc_preprocessor.search_documents(query, k=10)
+            
+            if vector_results:
+                print(f"Found {len(vector_results)} vector search results")
+                
+                # Re-rank results for better relevance
+                re_ranked_results = self.doc_preprocessor.re_rank_results(vector_results, query)
+                
+                # Extract precise answers from the best results
+                for result in re_ranked_results[:3]:  # Top 3 results
+                    print(f"Processing result from: {result['source']} (score: {result['score']:.3f})")
+                    precise_answer = self._extract_precise_answer(result["content"], query)
+                    result["content"] = precise_answer
+                    all_results.append(result)
+                
+                # If we found good vector results, return them
+                if all_results:
+                    print(f"Returning {len(all_results)} vector search results")
+                    return all_results
+            else:
+                print("No vector search results found")
+        
+        print("No good vector results, falling back to simple search")
         return self._simple_document_search(queries)
     
     def _extract_precise_answer(self, content: str, query: str) -> str:
-        """Extract a precise answer from content based on the query"""
+        """Extract a precise answer from content based on the query using RAG discipline"""
+        if not self.llm:
+            # Fallback to simple extraction if LLM not available
+            return self._simple_extract_answer(content, query)
+        
+        # Use RAG system prompt for intelligent answer generation
+        rag_prompt = f"""You are an AI assistant that answers user questions based only on the retrieved context provided. 
+Follow these steps strictly:
+
+1. Read the user's question carefully. Identify the specific information being asked.
+2. Examine the retrieved context (chunks of documents). 
+   - Select only the parts that directly answer the question. 
+   - Ignore irrelevant or generic sentences.
+3. Generate a clear, concise answer in your own words, grounded in the retrieved context. 
+   - Do not just repeat entire chunks of text. 
+   - Summarize or rephrase if needed.
+4. If the retrieved context does not contain the answer, say: 
+   "I could not find that information in the available documents."
+5. Never invent or guess information. Do not use outside knowledge.
+6. If the user's query is ambiguous, ask a clarifying question before answering.
+
+Output format:
+- Direct answer to the question in natural language.
+- If useful, you may cite or briefly quote the relevant part of the context.
+
+User Question: "{query}"
+
+Retrieved Context:
+{content}
+
+Answer:"""
+
+        try:
+            response = self.llm.invoke(rag_prompt)
+            answer = response.content.strip()
+            
+            # Ensure the answer is not too long and is actually answering the question
+            if len(answer) > 500:
+                # If too long, ask for a more concise version
+                concise_prompt = f"""The previous answer was too long. Please provide a more concise answer to this question: "{query}"
+
+Previous answer: {answer}
+
+Please provide a shorter, more focused answer (under 200 words):"""
+                
+                response = self.llm.invoke(concise_prompt)
+                answer = response.content.strip()
+            
+            return answer
+            
+        except Exception as e:
+            print(f"Error generating RAG answer: {e}")
+            # Fallback to simple extraction
+            return self._simple_extract_answer(content, query)
+    
+    def _simple_extract_answer(self, content: str, query: str) -> str:
+        """Simple fallback answer extraction when LLM is not available"""
         query_lower = query.lower()
         
         # For health plan mid-year changes, look for the specific FAQ
@@ -461,21 +805,16 @@ SQL:"""
                         if lines[j].strip() and not lines[j].strip().startswith(('1.', '2.', '3.')):
                             return lines[j].strip()
         
-        # For remote work queries, look for the purpose section
+        # For remote work queries, look for specific policy details
         if 'remote' in query_lower and 'work' in query_lower:
             lines = content.split('\n')
             for i, line in enumerate(lines):
                 if 'PURPOSE' in line and i + 1 < len(lines):
-                    # Get the purpose paragraph
                     purpose = lines[i + 1].strip()
                     if purpose:
                         return purpose
-                    # If no purpose text, get the first meaningful paragraph
-                    for j in range(i + 1, min(i + 10, len(lines))):
-                        if lines[j].strip() and not lines[j].strip().startswith(('1.', '2.', '3.')):
-                            return lines[j].strip()
         
-        # For meeting/standup queries, return full content for proper formatting
+        # For meeting/standup queries, extract key highlights
         if any(word in query_lower for word in ['standup', 'meeting', 'discussed', 'discussion']):
             # Return the full content so it can be properly formatted
             return content
@@ -500,6 +839,35 @@ SQL:"""
         
         # Final fallback: return first 200 characters
         return content[:200] + "..." if len(content) > 200 else content
+    
+    def _summarize_text(self, text: str, max_length: int = 200) -> str:
+        """Summarize text content if it's too long using LLM"""
+        if len(text) <= max_length:
+            return text
+        
+        # Use LLM for summarization if available
+        if self.llm:
+            try:
+                summary_prompt = f"""Summarize the following text in a concise, informative way. Keep it under {max_length} characters and preserve the most important information:
+
+{text}
+
+Summary:"""
+                
+                response = self.llm.invoke(summary_prompt)
+                summary = response.content.strip()
+                
+                # Ensure summary is not longer than original and fits within limit
+                if len(summary) < len(text) and len(summary) <= max_length:
+                    return summary
+            except Exception as e:
+                print(f"Error summarizing with LLM: {e}")
+        
+        # Fallback: simple truncation if LLM is not available or fails
+        if len(text) > max_length:
+            return text[:max_length-3] + "..."
+        
+        return text
 
     def _simple_document_search(self, queries: List[str]) -> List[Dict[str, Any]]:
         """Enhanced document search using document summaries and keywords"""
@@ -731,30 +1099,13 @@ Please try rephrasing your question or ask about one of these topics. For exampl
 - "What is the performance review process?"
 - "What was discussed in recent meetings?" """
         
-        # Show the best result
+        # Show the best result - content is already processed by RAG prompt
         best_result = results[0]
         content = best_result["content"]
         source = best_result["source"]
         
-        # Clean up content and format for better readability
-        content = content.strip()
-        
-        # Format content for better display
-        formatted_content = self._format_document_content(content)
-        
-        # If it's a Q&A format, extract just the answer for a more natural response
-        if content.startswith(('Q:', 'Question:')):
-            # Extract just the answer part
-            if 'A:' in content:
-                answer_start = content.find('A:')
-                answer = content[answer_start + 2:].strip()
-                formatted_answer = self._format_document_content(answer)
-                return formatted_answer
-            else:
-                return formatted_content
-        else:
-            # For other content, show it with formatting
-            return formatted_content
+        # The content is already processed by the RAG prompt, so return it directly
+        return content.strip()
     
     def _format_document_content(self, content: str) -> str:
         """Format document content for better readability with proper bullet points and structure"""

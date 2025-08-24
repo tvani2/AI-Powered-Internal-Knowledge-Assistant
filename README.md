@@ -112,28 +112,6 @@ AI-Powered-Internal-Knowledge-Assistant/
     └── technical_docs/
 ```
 
-## Configuration
-
-### Environment Variables
-- `OPENAI_API_KEY`: Your OpenAI API key (required)
-
-### Customization
-- **Add Documents**: Place files in the `documents/` subdirectories
-- **Modify Database**: Edit `setup_database.py` for different sample data
-- **Change Port**: Modify the port in `start_app.py`
-
-## Troubleshooting
-
-### Common Issues
-- **API Key Error**: Ensure `OPENAI_API_KEY` is set correctly
-- **Database Error**: Run `python setup_database.py` to recreate database
-- **Port Already in Use**: Change the port in `start_app.py`
-
-### Debugging
-- **Enable Debug Mode**: Uncomment the Response Details section in `static/index.html`
-- **View Logs**: Check console output for detailed logging
-- **Database Schema**: See `database_schema.md` for table structures
-
 ## Document Categories
 
 ### HR Policies (`documents/hr_policies/`)

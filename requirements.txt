@@ -10,7 +10,8 @@ faker
 chromadb
 python-dotenv
 sqlparse
-
+faiss-cpu
+numpy
 requests
 matplotlib
 seaborn
