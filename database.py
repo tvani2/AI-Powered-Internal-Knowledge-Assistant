@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Database management module for AI-Powered Internal Knowledge Assistant.
-Creates the SQLite database, tables, indexes, and populates with sample data.
+Creates the SQLite database, tables, indexes andpopulates with sample data.
 """
 
 import os
@@ -14,7 +14,7 @@ from faker import Faker
 
 
 class DatabaseManager:
-    """Manage SQLite database creation, schema, and sample data population."""
+    """Manage SQLite database creation, schema andsample data population."""
 
     def __init__(self, db_path: str = "company.db") -> None:
         self.db_path = db_path

@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import List, Dict, Any
 
 import pandas as pd
 
@@ -111,3 +111,12 @@ class DatabaseHandler:
         )
         
         return styled.to_html()
+
+
+    def summarize_schema(self, schema: Dict[str, List[Dict[str, Any]]]) -> str:
+        """Create a human-readable summary of the database schema"""
+        summary = []
+        for table, columns in schema.items():
+            col_names = [col["name"] for col in columns]
+            summary.append(f"- {table}: {', '.join(col_names)}")
+        return "\n".join(summary)

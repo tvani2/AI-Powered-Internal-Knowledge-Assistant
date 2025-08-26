@@ -13,7 +13,7 @@ import numpy as np
 
 class DocumentPreprocessor:
     """
-    Handles document preprocessing, chunking, and vector store operations
+    Handles document preprocessing, chunking andvector store operations
     """
     
     def __init__(self, chunk_size: int = 300, chunk_overlap: int = 50):
@@ -675,17 +675,17 @@ Please try rephrasing your question or ask about one of these topics. For exampl
         return {
             "employee_benefits.txt": {
                 "keywords": ["benefits", "health insurance", "dental", "vision", "401k", "retirement", "pto", "vacation", "sick leave", "life insurance", "disability", "enrollment", "mid year", "mid-year", "qualifying events", "cobra", "vesting"],
-                "description": "Comprehensive employee benefits policy covering health, dental, vision, retirement, PTO, and enrollment procedures",
+                "description": "Comprehensive employee benefits policy covering health, dental, vision, retirement, PTO andenrollment procedures",
                 "questions": ["What are the employee benefits?", "How do I enroll in benefits?", "Can I change my health plan mid-year?", "What is the 401k match?", "How much PTO do I get?", "What happens to my benefits if I leave?"]
             },
             "remote_work_policy.txt": {
                 "keywords": ["remote work", "work from home", "hybrid", "telecommute", "equipment", "ergonomic", "internet", "security", "communication", "performance", "expectations", "eligibility"],
-                "description": "Remote work policy covering eligibility, expectations, equipment, security, and performance standards",
+                "description": "Remote work policy covering eligibility, expectations, equipment, security andperformance standards",
                 "questions": ["What are the remote work policies?", "Am I eligible for remote work?", "What equipment is provided?", "What are the work hours for remote work?", "How is remote work performance measured?"]
             },
             "performance_management.txt": {
                 "keywords": ["performance", "review", "evaluation", "goals", "feedback", "appraisal", "rating", "improvement", "discipline", "appeal", "process"],
-                "description": "Performance management guidelines including reviews, feedback, goals, and improvement processes",
+                "description": "Performance management guidelines including reviews, feedback, goals andimprovement processes",
                 "questions": ["How does performance management work?", "What is the review process?", "How do I appeal a performance rating?", "What are the performance goals?", "How often are reviews conducted?"]
             },
             "engineering_team_standup.txt": {
@@ -695,22 +695,22 @@ Please try rephrasing your question or ask about one of these topics. For exampl
             },
             "executive_quarterly_review.txt": {
                 "keywords": ["executive", "quarterly", "review", "business", "strategy", "goals", "performance", "financial", "leadership"],
-                "description": "Executive quarterly business review covering strategy, goals, and performance",
+                "description": "Executive quarterly business review covering strategy, goals andperformance",
                 "questions": ["What was discussed in the executive review?", "What are the business goals?", "How is the company performing?", "What is the strategic direction?"]
             },
             "product_development_meeting.txt": {
                 "keywords": ["product", "development", "meeting", "features", "roadmap", "priorities", "timeline", "requirements"],
-                "description": "Product development meeting notes covering features, roadmap, and priorities",
+                "description": "Product development meeting notes covering features, roadmap andpriorities",
                 "questions": ["What was discussed in the product meeting?", "What features are being developed?", "What is the product roadmap?", "What are the development priorities?"]
             },
             "api_integration_guide.txt": {
                 "keywords": ["api", "integration", "guide", "documentation", "endpoints", "authentication", "examples", "code"],
-                "description": "API integration guide with endpoints, authentication, and code examples",
+                "description": "API integration guide with endpoints, authentication andcode examples",
                 "questions": ["How do I integrate with the API?", "What are the API endpoints?", "How do I authenticate?", "Are there code examples?"]
             },
             "system_architecture.txt": {
                 "keywords": ["architecture", "system", "design", "components", "infrastructure", "technology", "stack", "diagram"],
-                "description": "System architecture documentation covering components, infrastructure, and technology stack",
+                "description": "System architecture documentation covering components, infrastructure andtechnology stack",
                 "questions": ["What is the system architecture?", "What technologies are used?", "How is the system designed?", "What are the main components?"]
             }
         }

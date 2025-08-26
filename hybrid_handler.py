@@ -16,26 +16,35 @@ class HybridHandler:
         self.document_handler = document_handler
 
     def answer_query(self, query: str, analysis: QueryAnalysis, generate_sql_fn, format_db_fn, analyze_query_fn) -> str:
-        """
-        Controller layer that implements the decision tree:
-        1. Try SQL query first
-        2. If SQL fails, try document retrieval
-        3. If both fail, return error message
-        """
-        # Step 1: Check if it's a structured (SQL) type question
+        sql_result, doc_result = None, None
+
         if analysis.query_type in [QueryType.DATABASE, QueryType.HYBRID]:
             sql_result = self._run_sql_query(query, analysis, generate_sql_fn)
-            if sql_result:  # non-empty result
-                return self._format_sql_result(sql_result, format_db_fn)
-            # else fallback to docs
-        
-        # Step 2: Try document retrieval (RAG)
-        doc_result = self._run_doc_retrieval(query, analyze_query_fn)
+
+        if analysis.query_type in [QueryType.DOCUMENTS, QueryType.HYBRID]:
+            doc_result = self._run_doc_retrieval(query, analyze_query_fn)
+
+        # Hybrid logic
+        if analysis.query_type == QueryType.HYBRID:
+            combined = ""
+            if sql_result:
+                combined += self._format_sql_result(sql_result, format_db_fn)
+            if doc_result:
+                if combined:
+                    combined += "\n\n"  # separate sections
+                combined += self._format_doc_result(doc_result)
+            return combined or "I could not find that information in the available data."
+
+        # Database-only
+        if sql_result:
+            return self._format_sql_result(sql_result, format_db_fn)
+
+        # Documents-only
         if doc_result:
             return self._format_doc_result(doc_result)
-        
-        # Step 3: Both failed
+
         return "I could not find that information in the available data."
+
 
     def _run_sql_query(self, query: str, analysis: QueryAnalysis, generate_sql_fn) -> Optional[Dict[str, Any]]:
         """Run SQL query and return results if successful"""

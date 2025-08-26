@@ -7,7 +7,7 @@ from typing import Dict, Any
 
 class ConversationHandler:
     """
-    Handles conversational queries, personal questions, and closing statements
+    Handles conversational queries, personal questions and closing statements
     """
     
     # Centralized response dictionary for personal questions
@@ -26,11 +26,11 @@ class ConversationHandler:
         },
         "identity": {
             "keywords": ["what is your name", "who are you", "what are you"],
-            "response": "I'm an AI-powered internal knowledge assistant. I help employees find information about company policies, data, and documentation. How can I help you today?"
+            "response": "I'm an AI-powered internal knowledge assistant. I help employees find information about company policies, data anddocumentation. How can I help you today?"
         },
         "capabilities": {
             "keywords": ["what can you do", "how do you work", "what are your capabilities"],
-            "response": "I can help you with:<ul><li>Company data queries</li><li>Policy information</li><li>Meeting notes</li><li>Technical documentation</li></ul>I use semantic search and database integration to provide accurate answers."
+            "response": "I can help you with company data queries, policy information, meeting notes andtechnical documentation. I use semantic search and database integration to provide accurate answers."
         },
         "personal_life": {
             "keywords": ["do you sleep", "do you eat", "do you dream", "are you married", "do you have family", "do you have friends"],
@@ -92,7 +92,7 @@ class ConversationHandler:
         query_lower = query.lower().strip()
         
         if any(greeting in query_lower for greeting in ["hello", "hi", "hey"]):
-            return "Hello! I'm your AI assistant. I can help you with company data, policies, and documentation. What would you like to know?"
+            return "Hello! I'm your AI assistant. I can help you with company data, policies anddocumentation. What would you like to know?"
         elif any(thanks in query_lower for thanks in ["thanks", "thank you", "appreciate"]):
             return "You're welcome! I'm happy to help. Is there anything else you'd like to know about the company?"
         elif "how are you" in query_lower:
