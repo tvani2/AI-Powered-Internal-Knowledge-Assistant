@@ -28,7 +28,7 @@ class QueryAnalyzer:
             'leave', 'time off', 'holiday', 'pay', 'salary', 'compensation', 'perk',
             'assistance', 'counseling', 'transportation', 'technology', 'equipment',
             'faq', 'question', 'answer', 'how to', 'what if', 'when can', 'where to',
-            'discussed', 'discussion', 'latest', 'engineering', 'team', 'updates', 'blockers', 'progress'
+            'discussed', 'discussion', 'latest', 'team', 'updates', 'blockers', 'progress'
         ]
         
         # Database-related keywords
@@ -104,8 +104,28 @@ class QueryAnalyzer:
             query_type = QueryType.HYBRID
             confidence = 0.9
             reasoning = "Hybrid query requesting both project manager data and meeting notes"
-            suggested_document_queries = ["meeting notes", "project meeting", "manager meeting"]
-            suggested_sql = "SELECT p.name as project_name, e.name as manager_name, e.department FROM projects p JOIN employees e ON p.manager_id = e.id ORDER BY p.name"
+            # More specific document queries to find relevant meeting content
+            suggested_document_queries = [
+                "project development meeting", 
+                "executive quarterly review", 
+                "engineering team standup",
+                "project managers meeting",
+                "product development meeting"
+            ]
+            # Better SQL to get project managers with more context
+            suggested_sql = """
+                SELECT 
+                    p.name as project_name, 
+                    e.name as manager_name, 
+                    e.department,
+                    p.status,
+                    p.budget,
+                    p.deadline
+                FROM projects p 
+                JOIN employees e ON p.manager_id = e.id 
+                WHERE p.status IN ('Active', 'Planning', 'On Hold')
+                ORDER BY p.name
+            """
             return QueryAnalysis(
                 query_type=query_type,
                 confidence=confidence,

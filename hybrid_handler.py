@@ -65,6 +65,20 @@ class HybridHandler:
         """Run document retrieval and return results if successful"""
         analysis = analyze_query_fn(query)
         doc_queries = analysis.suggested_document_queries or [query]
+        
+        # For hybrid queries about project managers and meetings, use more specific search
+        if any(word in query.lower() for word in ['project manager', 'meeting', 'standup', 'review']):
+            # Expand search to ensure we get complete meeting content
+            expanded_queries = []
+            for base_query in doc_queries:
+                expanded_queries.extend([
+                    base_query,
+                    f"{base_query} content",
+                    f"{base_query} details",
+                    f"{base_query} notes"
+                ])
+            doc_queries = expanded_queries
+        
         doc_results = self.document_handler.execute_document_search(doc_queries)
         
         if doc_results:

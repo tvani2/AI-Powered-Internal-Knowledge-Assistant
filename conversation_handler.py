@@ -3,6 +3,7 @@ Personal and conversational query handling
 """
 
 from typing import Dict, Any
+import re
 
 
 class ConversationHandler:
@@ -41,13 +42,17 @@ class ConversationHandler:
     def is_conversational_query(self, query: str) -> bool:
         """Check if query is conversational/greeting"""
         query_lower = query.lower().strip()
-        conversational_phrases = [
-            "hello", "hi", "hey", "good morning", "good afternoon", "good evening",
-            "how are you", "how's it going", "what's up", "nice to meet you",
-            "thanks", "thank you", "appreciate it", "goodbye", "bye", "see you",
-            "have a good day", "have a nice day", "take care"
+        conversational_patterns = [
+            r"\bhello\b", r"\bhi\b", r"\bhey\b", 
+            r"\bgood morning\b", r"\bgood afternoon\b", r"\bgood evening\b",
+            r"\bhow are you\b", r"\bhow's it going\b", r"\bwhat's up\b", 
+            r"\bnice to meet you\b",
+            r"\bthanks\b", r"\bthank you\b", r"\bappreciate it\b",
+            r"\bgoodbye\b", r"\bbye\b", r"\bsee you\b",
+            r"\bhave a good day\b", r"\bhave a nice day\b", r"\btake care\b"
         ]
-        return any(phrase in query_lower for phrase in conversational_phrases)
+        return any(re.search(pattern, query_lower) for pattern in conversational_patterns)
+
     
     def is_closing(self, query: str) -> bool:
         """Check if query is a closing/goodbye"""
@@ -90,12 +95,16 @@ class ConversationHandler:
     def handle_conversational_query(self, query: str) -> str:
         """Handle conversational/greeting queries"""
         query_lower = query.lower().strip()
+
+        # Greeting detection only at start of query
+        if re.match(r"^(hello|hi|hey)\b", query_lower):
+            return "Hello! I'm your AI assistant. I can help you with company data, policies and documentation. What would you like to know?"
         
-        if any(greeting in query_lower for greeting in ["hello", "hi", "hey"]):
-            return "Hello! I'm your AI assistant. I can help you with company data, policies anddocumentation. What would you like to know?"
         elif any(thanks in query_lower for thanks in ["thanks", "thank you", "appreciate"]):
             return "You're welcome! I'm happy to help. Is there anything else you'd like to know about the company?"
+        
         elif "how are you" in query_lower:
             return "I'm functioning well and ready to help you with any questions about company data, policies, or documentation!"
+        
         else:
             return "Hello! I'm here to help with company information. What can I assist you with today?"

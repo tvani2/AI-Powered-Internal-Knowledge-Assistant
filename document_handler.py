@@ -593,7 +593,9 @@ Summary:"""
         return results
     
     def format_document_response(self, results: List[Dict[str, Any]]) -> str:
-        """Format document search results into a readable response"""
+        """
+        Format document search results into a readable response
+        """
         if not results:
             # Provide helpful feedback when no documents are found
             available_topics = []
@@ -612,13 +614,45 @@ Please try rephrasing your question or ask about one of these topics. For exampl
 - "What is the performance review process?"
 - "What was discussed in recent meetings?" """
         
-        # Show the best result - content is already processed by RAG prompt
-        best_result = results[0]
-        content = best_result["content"]
-        source = best_result["source"]
+        # For meeting-related queries, ensure we show complete content
+        is_meeting_query = any(
+            any(word in str(result.get('source', '')).lower() for word in ['meeting', 'standup', 'review'])
+            for result in results
+        )
         
-        # The content is already processed by the RAG prompt, so return it directly
-        return content.strip()
+        if is_meeting_query:
+            # Show complete meeting content for the best result
+            best_result = results[0]
+            content = best_result.get('content', '')
+            source = best_result.get('source', '')
+            
+            # Format the source name nicely
+            source_name = source.replace('_', ' ').replace('.txt', '').title()
+            
+            return f"""**{source_name}**
+
+{content}
+
+*Source: {source}*"""
+        
+        # For other queries, show multiple results with summaries
+        formatted_results = []
+        for i, result in enumerate(results[:3], 1):  # Show top 3 results
+            content = result.get('content', '')
+            source = result.get('source', '')
+            
+            # Format the source name nicely
+            source_name = source.replace('_', ' ').replace('.txt', '').title()
+            
+            # For longer content, show a summary
+            if len(content) > 300:
+                content = content[:300] + "..."
+            
+            formatted_results.append(f"""**{i}. {source_name}**
+{content}
+*Source: {source}*""")
+        
+        return "\n\n".join(formatted_results)
     
     def _format_document_content(self, content: str) -> str:
         """Format document content for better readability with proper HTML structure"""
