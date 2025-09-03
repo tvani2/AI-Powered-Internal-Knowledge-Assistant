@@ -1,133 +1,113 @@
 # AI-Powered Internal Knowledge Assistant
 
-An intelligent assistant that automatically decides when to use database vs documents and generates SQL from natural language queries.
+An intelligent enterprise knowledge assistant that combines **RAG**, **vector embeddings**, and **natural language processing** to provide unified access to both structured database data and unstructured documents.
 
-<img width="1200" height="800" alt="Screenshot (481)" src="https://github.com/user-attachments/assets/53065f1d-7c38-4653-b3df-fff483c28dde" />
+## Key Technologies & Features
 
+### **Core AI/ML Technologies**
+• **RAG** - Combines document retrieval with LLM generation for accurate, contextual responses
+• **FAISS Vector Database** - High-performance similarity search for semantic document retrieval
+• **OpenAI Embeddings** - Text-embedding-3-small model for document vectorization
+• **LangChain Framework** - Orchestrates LLM interactions and document processing
+• **Natural Language to SQL** - Automatic SQL generation from conversational queries
 
-## Project Goal
+### **Backend Architecture**
+• **FastAPI** - Modern, high-performance web framework with automatic API documentation
+• **SQLite Database** - Structured data storage with foreign key relationships and indexes
+• **Hybrid Query Processing** - Intelligent routing between database and document sources
+• **Vector Search** - Semantic similarity search across company documents
+• **Real-time Chat Interface** - HTTP-based conversational AI interface
 
-Create a unified AI system that can:
-- **Analyze queries** to determine data source (database vs documents)
-- **Generate SQL** from natural language for database queries
-- **Search documents** semantically for policy/meeting information
-- **Provide hybrid responses** combining structured data with contextual information
-- **Visualize results** with charts for numeric data
+### **Data Processing & Storage**
+• **Document Chunking** - RecursiveCharacterTextSplitter for optimal text segmentation
+• **Vector Store Management** - Persistent FAISS index with metadata tracking
+• **Database Schema Design** - Normalized relational model with performance indexes
+• **Query Analysis Engine** - Confidence-based routing between data sources
 
+## Project Highlights
+
+### **Intelligent Query Routing**
+• **Automatic Source Detection** - Analyzes queries to determine database vs document search
+• **Confidence Scoring** - Uses ML-based confidence metrics for optimal routing
+• **Hybrid Responses** - Combines structured data with contextual document information
+
+### **Advanced Document Processing**
+• **Semantic Search** - Vector-based similarity search across HR policies, meeting notes, and technical docs
+• **Context-Aware Retrieval** - RAG system provides precise answers with source attribution
+• **Document Summarization** - LLM-powered content summarization and precise answer extraction
+
+### **Database Intelligence**
+• **Natural Language SQL** - Converts conversational queries to optimized SQL statements
+• **Schema-Aware Generation** - LLM generates SQL with full database schema context
+• **Query Validation** - Safety checks and syntax validation for generated SQL
+
+## Technical Implementation
+
+### **Performance Optimizations**
+• **Vector Index Caching** - Persistent FAISS index for fast similarity search
+• **Database Indexing** - Strategic indexes on frequently queried columns
+• **Query Optimization** - Rule-based SQL generation with LLM fallback
+
+### **Security & Safety**
+• **Read-Only Database Access** - SELECT-only operations with SQL injection protection
+• **Input Validation** - Comprehensive input sanitization and validation
+• **API Key Management** - Secure environment variable handling
+
+## Data Sources
+
+### **Structured Data (SQLite)**
+• **Employee Database** - 100 employees across 10 departments with hierarchical relationships
+• **Sales Records** - 300 sales transactions with customer and product data
+• **Project Management** - 50 projects with budgets, timelines, and manager assignments
+
+### **Unstructured Documents**
+• **HR Policies** - Employee benefits, performance management, remote work policies
+• **Meeting Notes** - Engineering standups, executive reviews, product development meetings
+• **Technical Documentation** - API guides, system architecture, integration specifications
 
 ## Quick Start
 
 ### Prerequisites
-- Python 3.10+ 
-- OpenAI API key
+• Python 3.10+
+• OpenAI API key
 
-### Setup
+### Installation
+```bash
+# Clone repository
+git clone <repository-url>
+cd AI-Powered-Internal-Knowledge-Assistant
 
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+# Install dependencies
+pip install -r requirements.txt
 
-2. **Set environment variables:**
-   ```bash
-   # Windows
-   set OPENAI_API_KEY=your_api_key_here
-   
-   # Linux/Mac
-   export OPENAI_API_KEY=your_api_key_here
-   ```
+# Set environment variables
+export OPENAI_API_KEY=your_api_key_here
 
-3. **Initialize database:**
-   ```bash
-   python setup_database.py
-   ```
+# Initialize database
+python database.py
 
-4. **Start the application:**
-   ```bash
-   python start_app.py
-   ```
+# Start application
+python api.py
+```
 
-5. **Open your browser:**
-   Navigate to `http://localhost:8000`
-
-## Features
-
-###  **Intelligent Query Routing**
-- Automatically determines whether to query database or search documents
-- Uses confidence scoring to choose the best data source
-- Provides hybrid responses combining multiple sources
-
-###  **Database Operations**
-- Natural language to SQL conversion
-- Employee data, sales records, inventory management
-- Automatic chart generation for numeric data
-- Sample data included for testing
-
-###  **Document Search**
-- Semantic search across company documents
-- HR policies, meeting notes, technical documentation
-- Context-aware responses with source attribution
-
-###  **Modern Web Interface**
-- Clean, responsive design
-- Real-time chat interface
-- Sample queries for easy testing
-- System information display
+### Access Points
+• **Web Interface**: http://localhost:8000
+• **API Documentation**: http://localhost:8000/docs
+• **Health Check**: http://localhost:8000/health
 
 ## Usage Examples
 
 ### Database Queries
-- "Show me all employees in the Engineering department"
-- "What's the total sales for Q1 2024?"
-- "Create a chart of employee salaries by department"
+• "Show me the top 5 employees by sales revenue"
+• "How many employees are in the Engineering department?"
+• "List all active projects with their budgets"
 
 ### Document Queries
-- "What's our remote work policy?"
-- "What was discussed in the last executive meeting?"
-- "How do I integrate with the API?"
+• "What are the employee benefits?"
+• "What was discussed in the latest engineering standup?"
+• "What is the system architecture?"
 
 ### Hybrid Queries
-- "Show me engineering employees and their benefits"
-- "What's our sales performance and what policies affect it?"
-
-## Project Structure
-
-```
-AI-Powered-Internal-Knowledge-Assistant/
-├── api.py                 # FastAPI backend
-├── start_app.py          # Web interface startup
-├── intelligent_agent.py  # Core AI logic
-├── database.py           # Database operations
-├── chart_generator.py    # Visualization
-├── setup_database.py     # Database setup
-├── requirements.txt      # Dependencies
-├── database_schema.md    # Schema documentation
-├── company.db           # SQLite database
-├── .gitignore           # Git ignore patterns
-├── static/
-│   └── index.html       # Web frontend
-├── tools/
-│   ├── database_tool.py
-│   └── document_search_tool.py
-└── documents/
-    ├── hr_policies/
-    ├── meeting_notes/
-    └── technical_docs/
-```
-
-## Document Categories
-
-### HR Policies (`documents/hr_policies/`)
-- Employee benefits and policies
-- Performance management guidelines
-- Remote work policies
-
-### Meeting Notes (`documents/meeting_notes/`)
-- Engineering team standups
-- Executive quarterly reviews
-- Product development meetings
-
-### Technical Docs (`documents/technical_docs/`)
-- API integration guides
-- System architecture documentation
-- Technical specifications
+• "Show me sales data and related policies"
+• "List project managers and their meeting notes"
+• "What are the benefits for high-performing employees?"

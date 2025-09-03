@@ -79,6 +79,19 @@ class HybridHandler:
                 ])
             doc_queries = expanded_queries
         
+        # For hybrid queries about sales and policies, expand search terms
+        elif any(word in query.lower() for word in ['sales', 'revenue', 'business', 'policies', 'market']):
+            expanded_queries = []
+            for base_query in doc_queries:
+                expanded_queries.extend([
+                    base_query,
+                    f"{base_query} strategy",
+                    f"{base_query} policies",
+                    f"{base_query} performance",
+                    f"{base_query} data"
+                ])
+            doc_queries = expanded_queries
+        
         doc_results = self.document_handler.execute_document_search(doc_queries)
         
         if doc_results:

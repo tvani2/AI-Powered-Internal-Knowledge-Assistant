@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from intelligent_agent import QueryAnalysis, QueryType
+from models import QueryAnalysis, QueryType
 
 
 class QueryAnalyzer:
@@ -21,11 +21,11 @@ class QueryAnalyzer:
             'policy', 'policies', 'procedure', 'guideline', 'rule', 'remote work', 
             'remote', 'work', 'benefit', 'benefits', 'meeting', 'standup', 'review', 'documentation',
             'technical', 'architecture', 'api', 'system', 'hr', 'human resources',
-            'performance management', 'employee handbook', 'work from home', 'what are',
+            'employee handbook', 'work from home', 'what are',
             'health', 'insurance', 'plan', 'coverage', 'enrollment', 'qualifying', 'event',
             'mid-year', 'mid year', 'midyear', 'change', 'modify', 'update', 'switch', 'enroll',
             'dental', 'vision', 'medical', '401k', 'retirement', 'pto', 'vacation', 'sick',
-            'leave', 'time off', 'holiday', 'pay', 'salary', 'compensation', 'perk',
+            'leave', 'time off', 'holiday', 'pay', 'compensation', 'perk',
             'assistance', 'counseling', 'transportation', 'technology', 'equipment',
             'faq', 'question', 'answer', 'how to', 'what if', 'when can', 'where to',
             'discussed', 'discussion', 'latest', 'team', 'updates', 'blockers', 'progress'
@@ -37,6 +37,13 @@ class QueryAnalyzer:
             'department', 'salary', 'hire', 'count', 'how many', 'list all',
             'top', 'bottom', 'average', 'sum', 'total', 'manager', 'customer',
             'data', 'table', 'query', 'select', 'database'
+        ]
+        
+        # Database query patterns - these indicate requests for actual data
+        db_patterns = [
+            'list', 'show', 'find', 'get', 'display', 'retrieve',
+            'who are', 'which employees', 'what employees',
+            'high performing', 'top performers', 'best employees'
         ]
         
         # Count matches with better logic
@@ -61,6 +68,11 @@ class QueryAnalyzer:
                 # Give extra weight for sales-related terms
                 if keyword in ['sales', 'revenue', 'data']:
                     db_matches += 2
+        
+        # Check for database query patterns - these strongly indicate database queries
+        for pattern in db_patterns:
+            if pattern in query_lower:
+                db_matches += 3  # High weight for clear database patterns
         
         # Initialize variables
         suggested_sql: Optional[str] = None

@@ -19,28 +19,13 @@ import faiss
 import pickle
 
 from tools.database_tool import DatabaseTool
-from tools.document_search_tool import DocumentSearchTool
 from conversation_handler import ConversationHandler
 from document_handler import DocumentHandler
 from database_handler import DatabaseHandler
 from bootstrap import EnvironmentManager, LLMInitializer
 
 
-class QueryType(Enum):
-    DATABASE = "database"
-    DOCUMENTS = "documents"
-    HYBRID = "hybrid"
-    CONVERSATIONAL = "conversational"
-    UNKNOWN = "unknown"
-
-
-@dataclass
-class QueryAnalysis:
-    query_type: QueryType
-    confidence: float
-    reasoning: str
-    suggested_sql: Optional[str] = None
-    suggested_document_queries: Optional[List[str]] = None
+from models import QueryType, QueryAnalysis
 
 from hybrid_handler import HybridHandler
 from query_analyzer import QueryAnalyzer

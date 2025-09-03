@@ -22,6 +22,10 @@ class LLMInitializer:
 
     @staticmethod
     def initialize_llm():
+        # Load environment variables first
+        from dotenv import load_dotenv
+        load_dotenv()
+        
         api_key = os.getenv("OPENAI_API_KEY")
         if api_key and api_key != "your-api-key-here":
             try:

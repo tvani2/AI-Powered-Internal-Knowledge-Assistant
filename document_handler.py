@@ -13,15 +13,19 @@ import numpy as np
 
 class DocumentPreprocessor:
     """
-    Handles document preprocessing, chunking andvector store operations
+    Handles document preprocessing, chunking and vector store operations
     """
     
-    def __init__(self, chunk_size: int = 300, chunk_overlap: int = 50):
+    def __init__(self, chunk_size: int = 700, chunk_overlap: int = 100):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.embeddings = None
         self.vector_store = None
         self.chunks = []
+        
+        # Load environment variables first
+        from dotenv import load_dotenv
+        load_dotenv()
         
         # Initialize embeddings if API key is available
         api_key = os.getenv("OPENAI_API_KEY")
@@ -168,15 +172,24 @@ class DocumentPreprocessor:
             with open(metadata_path, "rb") as f:
                 data = pickle.load(f)
             
-            self.vector_store = {
-                "index": index,
-                "chunks": data["chunks"],
-                "metadatas": data["metadatas"],
-                "embeddings": data["embeddings"]
-            }
-            
-            print("Vector store loaded successfully")
-            return True
+            # Handle different vector store formats
+            if isinstance(data, dict) and "chunks" in data:
+                # New format with chunks, metadatas, embeddings
+                self.vector_store = {
+                    "index": index,
+                    "chunks": data["chunks"],
+                    "metadatas": data["metadatas"],
+                    "embeddings": data["embeddings"]
+                }
+                print("Vector store loaded successfully (new format)")
+                return True
+            elif isinstance(data, tuple) and len(data) == 2:
+                # Old format with InMemoryDocstore - incompatible, need to recreate
+                print("Vector store format incompatible - will recreate")
+                return False
+            else:
+                print(f"Unknown vector store format: {type(data)}")
+                return False
             
         except Exception as e:
             print(f"Error loading vector store: {e}")
@@ -254,8 +267,12 @@ class DocumentHandler:
     def __init__(self, llm: Optional[ChatOpenAI] = None):
         self.llm = llm
         
+        # Load environment variables first
+        from dotenv import load_dotenv
+        load_dotenv()
+        
         # Initialize document preprocessor and vector store
-        self.doc_preprocessor = DocumentPreprocessor(chunk_size=300, chunk_overlap=50)
+        self.doc_preprocessor = DocumentPreprocessor(chunk_size=800, chunk_overlap=100)
         self.vector_store_loaded = self.doc_preprocessor.load_vector_store()
         
         if self.vector_store_loaded:
@@ -295,12 +312,29 @@ class DocumentHandler:
                 # Re-rank results for better relevance
                 re_ranked_results = self.doc_preprocessor.re_rank_results(vector_results, query)
                 
-                # Extract precise answers from the best results
+                # Extract precise answers from the best results - stop after finding ONE good answer
                 for result in re_ranked_results[:3]:  # Top 3 results
                     print(f"Processing result from: {result['source']} (score: {result['score']:.3f})")
+                    print(f"Original content length: {len(result['content'])}")
+                    print(f"Content preview: {result['content'][:100]}...")
+                    
+                    # For performance-related queries, try to get more complete context
+                    if any(word in query.lower() for word in ['performance', 'rating', 'outstanding', 'exceeds', 'high performance', 'top performers']):
+                        expanded_content = self._expand_performance_context(result["content"], query)
+                        if expanded_content and len(expanded_content) > len(result["content"]):
+                            result["content"] = expanded_content
+                    
                     precise_answer = self._extract_precise_answer(result["content"], query)
+                    print(f"Precise answer length: {len(precise_answer)}")
+                    print(f"Precise answer preview: {precise_answer[:100]}...")
                     result["content"] = precise_answer
-                    all_results.append(result)
+                    
+                    # Only add this result if it provides meaningful information
+                    if not precise_answer.startswith("I could not find") and len(precise_answer.strip()) > 50:
+                        all_results.append(result)
+                        # Found ONE good answer, stop processing more results to avoid repetition
+                        print(f"Found good answer from {result['source']}, stopping search")
+                        break
                 
                 # If we found good vector results, return them
                 if all_results:
@@ -318,25 +352,46 @@ class DocumentHandler:
             # Fallback to simple extraction if LLM not available
             return self._simple_extract_answer(content, query)
         
-        # Use RAG system prompt for intelligent answer generation
+        # For performance-related queries, try to get more complete context
+        if any(word in query.lower() for word in ['performance', 'rating', 'outstanding', 'exceeds', 'high performance', 'top performers']):
+            # Try to expand the content by looking at surrounding context
+            expanded_content = self._expand_performance_context(content, query)
+            if expanded_content and len(expanded_content) > len(content):
+                content = expanded_content
+        
+                        # Use RAG system prompt for intelligent answer generation
         rag_prompt = f"""You are an AI assistant that answers user questions based only on the retrieved context provided. 
 Follow these steps strictly:
 
-1. Read the user's question carefully. Identify the specific information being asked.
+1. Read the user's question carefully. Identify the specific information being asked. 
 2. Examine the retrieved context (chunks of documents). 
-   - Select only the parts that directly answer the question. 
-   - Ignore irrelevant or generic sentences.
-3. Generate a clear, concise answer in your own words, grounded in the retrieved context. 
-   - Do not just repeat entire chunks of text. 
-   - Summarize or rephrase if needed.
-4. If the retrieved context does not contain the answer, say: 
-   "I could not find that information in the available documents."
-5. Never invent or guess information. Do not use outside knowledge.
-6. If the user's query is ambiguous, ask a clarifying question before answering.
-7. Do not greet the user or introduce yourself - stay focused on answering the question.
-8. Do not repeat introductions or capabilities unless specifically asked.
+     - Select only the parts that directly answer the question. 
+     - Ignore irrelevant or generic sentences.
+3. Generate a clear, comprehensive answer based on the retrieved context. 
+     - For performance-related queries, provide complete details about ratings, criteria, and processes
+     - For sales and business queries, provide complete details about revenue, performance, strategies, and business policies
+     - For business policies, include strategic decisions, risk mitigation, investment plans, and operational guidelines
+     - Include specific numbers, percentages, and criteria when available
+     - Do not truncate important information
+4. CRITICAL: Business strategies, strategic decisions, and operational guidelines ARE business policies.
+   - Sales strategies and revenue targets ARE sales policies
+   - Market expansion plans and business initiatives ARE business policies
+   - Strategic decisions about products, markets, and operations ARE business policies
+   - If the context contains business strategies, revenue data, or strategic initiatives, this IS policy information
+   - Revenue performance data IS sales policy information
+   - Product performance metrics IS business policy information
+   - Strategic initiatives and goals ARE business policies
+5. IMPORTANT: If the retrieved context contains ANY information related to the query, you MUST provide it. 
+   - For sales queries, include revenue data, product performance, market analysis, and business strategies
+   - For policy queries, include any business decisions, guidelines, or strategic initiatives mentioned
+   - Only say "I could not find that information" if the context is completely unrelated
+6. NEVER say "I could not find that information" if the context contains business, sales, revenue, strategy, or policy-related content
+7. Never invent or guess information. Do not use outside knowledge.
+8. If the user's query is ambiguous, ask a clarifying question before answering.
+9. Do not greet the user or introduce yourself - stay focused on answering the question.
+10. Do not repeat introductions or capabilities unless specifically asked.
 
-Provide answers as clear, natural paragraphs. 
+Provide answers as clear, natural paragraphs with complete information. 
 Do not use bolding, bullets, or Markdown/HTML formatting.
 
 User Question: "{query}"
@@ -362,16 +417,88 @@ Please provide a shorter, more focused answer (under 200 words):"""
                 response = self.llm.invoke(concise_prompt)
                 answer = response.content.strip()
             
+            print(f"LLM generated answer: {answer[:100]}...")
             return answer
-            
+        
         except Exception as e:
             print(f"Error generating RAG answer: {e}")
+            print("Falling back to simple extraction...")
             # Fallback to simple extraction
-            return self._simple_extract_answer(content, query)
+            fallback_answer = self._simple_extract_answer(content, query)
+            print(f"Fallback answer: {fallback_answer[:100]}...")
+            return fallback_answer
+    
+    def _expand_performance_context(self, content: str, query: str) -> str:
+        """Try to expand content for performance-related queries by finding related sections"""
+        try:
+            # Look for the source file to get more context
+            if hasattr(self, 'doc_preprocessor') and hasattr(self.doc_preprocessor, 'vector_store'):
+                if self.doc_preprocessor.vector_store and 'chunks' in self.doc_preprocessor.vector_store:
+                    chunks = self.doc_preprocessor.vector_store['chunks']
+                    
+                    # Find chunks that contain performance-related keywords
+                    performance_chunks = []
+                    for chunk in chunks:
+                        if any(keyword in chunk['content'].lower() for keyword in 
+                               ['outstanding', 'exceeds', 'rating', 'performance', 'top']):
+                            performance_chunks.append(chunk)
+                    
+                    # If we found related chunks, combine them
+                    if performance_chunks:
+                        # Sort by relevance to the query
+                        query_lower = query.lower()
+                        for chunk in performance_chunks:
+                            chunk['relevance'] = sum(1 for word in query_lower.split() 
+                                                   if word in chunk['content'].lower())
+                        
+                        performance_chunks.sort(key=lambda x: x.get('relevance', 0), reverse=True)
+                        
+                        # Combine top 3 most relevant chunks
+                        combined_content = '\n\n'.join([chunk['content'] for chunk in performance_chunks[:3]])
+                        if len(combined_content) > len(content):
+                            return combined_content
+                            
+                    # If no performance chunks found, try to get the original document content
+                    if 'performance_management.txt' in content:
+                        # Look for the original file content
+                        try:
+                            with open('documents/hr_policies/performance_management.txt', 'r', encoding='utf-8') as f:
+                                full_content = f.read()
+                            
+                            # Extract the performance ratings section
+                            if 'PERFORMANCE RATINGS AND SCALES' in full_content:
+                                start_idx = full_content.find('PERFORMANCE RATINGS AND SCALES')
+                                end_idx = full_content.find('5. PERFORMANCE FEEDBACK PROCESS')
+                                if end_idx == -1:
+                                    end_idx = len(full_content)
+                                
+                                ratings_section = full_content[start_idx:end_idx].strip()
+                                if len(ratings_section) > len(content):
+                                    return ratings_section
+                        except Exception as e:
+                            print(f"Error reading performance file: {e}")
+                            
+        except Exception as e:
+            print(f"Error expanding performance context: {e}")
+        
+        return content
     
     def _simple_extract_answer(self, content: str, query: str) -> str:
         """Simple fallback answer extraction when LLM is not available"""
         query_lower = query.lower()
+        
+        # For performance-related queries, look for specific sections
+        if any(word in query_lower for word in ['performance', 'rating', 'outstanding', 'exceeds', 'high performance']):
+            # Look for performance rating sections
+            lines = content.split('\n')
+            for i, line in enumerate(lines):
+                if any(keyword in line.lower() for keyword in ['rating', 'outstanding', 'exceeds', 'performance']):
+                    # Get the section with this line and a few lines after
+                    section_start = max(0, i - 2)
+                    section_end = min(len(lines), i + 5)
+                    section = '\n'.join(lines[section_start:section_end]).strip()
+                    if len(section) > 50:  # Ensure we have meaningful content
+                        return section
         
         # For health plan mid-year changes, look for the specific FAQ
         if 'mid' in query_lower and 'year' in query_lower and 'health' in query_lower:
@@ -399,6 +526,59 @@ Please provide a shorter, more focused answer (under 200 words):"""
                     for j in range(i + 1, min(i + 10, len(lines))):
                         if lines[j].strip() and not lines[j].strip().startswith(('1.', '2.', '3.')):
                             return lines[j].strip()
+        
+        # For sales and business queries, look for key performance sections
+        if any(word in query_lower for word in ['sales', 'revenue', 'business', 'market', 'performance']):
+             print(f"Processing sales/business query. Content length: {len(content)}")
+             lines = content.split('\n')
+             print(f"Number of lines: {len(lines)}")
+             
+             # First, look for revenue and sales data sections
+             for i, line in enumerate(lines):
+                 if any(keyword in line.lower() for keyword in ['revenue', 'profit', 'sales', 'performance', 'target', 'exceeded', 'financial', 'business', 'strategy']):
+                     print(f"Found performance indicator at line {i}: {line[:50]}...")
+                     # Get the section with this line and surrounding context
+                     section_start = max(0, i - 2)
+                     section_end = min(len(lines), i + 10)
+                     section = '\n'.join(lines[section_start:section_end]).strip()
+                     if len(section) > 100:  # Ensure we have meaningful content
+                         print(f"Returning section of length {len(section)}")
+                         return section
+             
+             # If no specific performance indicators found, look for business strategy sections
+             for i, line in enumerate(lines):
+                 if any(keyword in line.lower() for keyword in ['strategic', 'initiatives', 'business', 'market', 'expansion']):
+                     print(f"Found business strategy at line {i}: {line[:50]}...")
+                     section_start = max(0, i - 1)
+                     section_end = min(len(lines), i + 15)
+                     section = '\n'.join(lines[section_start:section_end]).strip()
+                     if len(section) > 150:  # Ensure we have meaningful content
+                         print(f"Returning strategy section of length {len(section)}")
+                         return section
+             
+             # If still no content found, look for any business-related content
+             for i, line in enumerate(lines):
+                 if any(keyword in line.lower() for keyword in ['business', 'company', 'quarterly', 'review', 'executive', 'leadership']):
+                     print(f"Found business content at line {i}: {line[:50]}...")
+                     section_start = max(0, i - 1)
+                     section_end = min(len(lines), i + 8)
+                     section = '\n'.join(lines[section_start:section_end]).strip()
+                     if len(section) > 80:  # Lower threshold for business content
+                         print(f"Returning business section of length {len(section)}")
+                         return section
+             
+             # If still no content found, look for any content that might be relevant
+             for i, line in enumerate(lines):
+                 if any(keyword in line.lower() for keyword in ['product', 'customer', 'market', 'quarterly', 'review', 'executive']):
+                     print(f"Found potentially relevant content at line {i}: {line[:50]}...")
+                     section_start = max(0, i - 1)
+                     section_end = min(len(lines), i + 6)
+                     section = '\n'.join(lines[section_start:section_end]).strip()
+                     if len(section) > 60:  # Even lower threshold for potentially relevant content
+                         print(f"Returning potentially relevant section of length {len(section)}")
+                         return section
+             
+             print("No sales/business content found in simple extraction")
         
         # For remote work queries, look for specific policy details
         if 'remote' in query_lower and 'work' in query_lower:
@@ -432,8 +612,8 @@ Please provide a shorter, more focused answer (under 200 words):"""
             if line and len(line) > 20 and not line.startswith(('1.', '2.', '3.', '4.', '5.')):
                 return line
         
-        # Final fallback: return first 200 characters
-        return content[:200] + "..." if len(content) > 200 else content
+        # Final fallback: return first 200 characters without truncation
+        return content[:200] if len(content) > 200 else content
     
     def _summarize_text(self, text: str, max_length: int = 200) -> str:
         """Summarize text content if it's too long using LLM"""
@@ -594,7 +774,7 @@ Summary:"""
     
     def format_document_response(self, results: List[Dict[str, Any]]) -> str:
         """
-        Format document search results into a readable response
+        Format document search results into a clean, readable response without source citations
         """
         if not results:
             # Provide helpful feedback when no documents are found
@@ -614,45 +794,46 @@ Please try rephrasing your question or ask about one of these topics. For exampl
 - "What is the performance review process?"
 - "What was discussed in recent meetings?" """
         
-        # For meeting-related queries, ensure we show complete content
-        is_meeting_query = any(
-            any(word in str(result.get('source', '')).lower() for word in ['meeting', 'standup', 'review'])
-            for result in results
-        )
+        # Combine all relevant content for a comprehensive response
+        combined_content = []
         
-        if is_meeting_query:
-            # Show complete meeting content for the best result
-            best_result = results[0]
-            content = best_result.get('content', '')
-            source = best_result.get('source', '')
-            
-            # Format the source name nicely
-            source_name = source.replace('_', ' ').replace('.txt', '').title()
-            
-            return f"""**{source_name}**
-
-{content}
-
-*Source: {source}*"""
-        
-        # For other queries, show multiple results with summaries
-        formatted_results = []
-        for i, result in enumerate(results[:3], 1):  # Show top 3 results
+        for result in results[:3]:  # Use top 3 results
             content = result.get('content', '')
-            source = result.get('source', '')
-            
-            # Format the source name nicely
-            source_name = source.replace('_', ' ').replace('.txt', '').title()
-            
-            # For longer content, show a summary
-            if len(content) > 300:
-                content = content[:300] + "..."
-            
-            formatted_results.append(f"""**{i}. {source_name}**
-{content}
-*Source: {source}*""")
+            if content and content.strip() and not content.startswith("I could not find"):
+                combined_content.append(content)
         
-        return "\n\n".join(formatted_results)
+        if not combined_content:
+            return "I couldn't find relevant information in our documents."
+        
+        # Join all content and clean it up
+        full_content = "\n\n".join(combined_content)
+        
+        # Remove markdown formatting (**text** becomes text)
+        import re
+        full_content = re.sub(r'\*\*(.*?)\*\*', r'\1', full_content)
+        
+        # If content is too long, use LLM to summarize it
+        if len(full_content) > 1000 and self.llm:
+            try:
+                summary_prompt = f"""
+Please provide a clear, comprehensive summary of the following employee benefits information. 
+Remove any source citations or file references. Present the information in a clean, organized way.
+
+Information:
+{full_content}
+
+Summary:"""
+                
+                response = self.llm.invoke(summary_prompt)
+                return response.content.strip()
+                
+            except Exception as e:
+                print(f"Error summarizing content: {e}")
+                # Fall back to truncating manually without "..." to avoid cutting sentences
+                return full_content[:800] if len(full_content) > 800 else full_content
+        
+        # For shorter content, return as-is (cleaned of markdown)
+        return full_content
     
     def _format_document_content(self, content: str) -> str:
         """Format document content for better readability with proper HTML structure"""
@@ -709,18 +890,18 @@ Please try rephrasing your question or ask about one of these topics. For exampl
         return {
             "employee_benefits.txt": {
                 "keywords": ["benefits", "health insurance", "dental", "vision", "401k", "retirement", "pto", "vacation", "sick leave", "life insurance", "disability", "enrollment", "mid year", "mid-year", "qualifying events", "cobra", "vesting"],
-                "description": "Comprehensive employee benefits policy covering health, dental, vision, retirement, PTO andenrollment procedures",
+                "description": "Comprehensive employee benefits policy covering health, dental, vision, retirement, PTO and enrollment procedures",
                 "questions": ["What are the employee benefits?", "How do I enroll in benefits?", "Can I change my health plan mid-year?", "What is the 401k match?", "How much PTO do I get?", "What happens to my benefits if I leave?"]
             },
             "remote_work_policy.txt": {
                 "keywords": ["remote work", "work from home", "hybrid", "telecommute", "equipment", "ergonomic", "internet", "security", "communication", "performance", "expectations", "eligibility"],
-                "description": "Remote work policy covering eligibility, expectations, equipment, security andperformance standards",
+                "description": "Remote work policy covering eligibility, expectations, equipment, security and performance standards",
                 "questions": ["What are the remote work policies?", "Am I eligible for remote work?", "What equipment is provided?", "What are the work hours for remote work?", "How is remote work performance measured?"]
             },
             "performance_management.txt": {
-                "keywords": ["performance", "review", "evaluation", "goals", "feedback", "appraisal", "rating", "improvement", "discipline", "appeal", "process"],
-                "description": "Performance management guidelines including reviews, feedback, goals andimprovement processes",
-                "questions": ["How does performance management work?", "What is the review process?", "How do I appeal a performance rating?", "What are the performance goals?", "How often are reviews conducted?"]
+                "keywords": ["performance", "review", "evaluation", "goals", "feedback", "appraisal", "rating", "improvement", "discipline", "appeal", "process", "outstanding", "exceeds", "high performance", "top performers", "rating 5", "rating 4"],
+                "description": "Performance management guidelines including reviews, feedback, goals, improvement processes, and performance ratings (1-5 scale)",
+                "questions": ["How does performance management work?", "What is the review process?", "How do I appeal a performance rating?", "What are the performance goals?", "How often are reviews conducted?", "What are the performance ratings?", "Who are high performance employees?", "What does outstanding performance mean?"]
             },
             "engineering_team_standup.txt": {
                 "keywords": ["standup", "meeting", "engineering", "team", "updates", "blockers", "progress", "daily", "agenda"],
@@ -728,23 +909,23 @@ Please try rephrasing your question or ask about one of these topics. For exampl
                 "questions": ["What was discussed in the engineering standup?", "What are the current blockers?", "What progress was made?", "What are the team updates?"]
             },
             "executive_quarterly_review.txt": {
-                "keywords": ["executive", "quarterly", "review", "business", "strategy", "goals", "performance", "financial", "leadership"],
-                "description": "Executive quarterly business review covering strategy, goals andperformance",
-                "questions": ["What was discussed in the executive review?", "What are the business goals?", "How is the company performing?", "What is the strategic direction?"]
+                "keywords": ["executive", "quarterly", "review", "business", "strategy", "goals", "performance", "financial", "leadership", "sales", "revenue", "profit", "market", "products", "customers", "policies", "business policies"],
+                "description": "Executive quarterly business review covering strategy, goals, performance, sales data, revenue, market expansion and business policies",
+                "questions": ["What was discussed in the executive review?", "What are the business goals?", "How is the company performing?", "What is the strategic direction?", "What are the sales policies?", "What is the revenue performance?", "What are the business policies?"]
             },
             "product_development_meeting.txt": {
-                "keywords": ["product", "development", "meeting", "features", "roadmap", "priorities", "timeline", "requirements"],
-                "description": "Product development meeting notes covering features, roadmap andpriorities",
-                "questions": ["What was discussed in the product meeting?", "What features are being developed?", "What is the product roadmap?", "What are the development priorities?"]
+                "keywords": ["product", "development", "meeting", "features", "roadmap", "priorities", "timeline", "requirements", "sales", "market", "customer", "revenue", "business"],
+                "description": "Product development meeting notes covering features, roadmap, priorities, sales strategy and market analysis",
+                "questions": ["What was discussed in the product meeting?", "What features are being developed?", "What is the product roadmap?", "What are the development priorities?", "What are the sales strategies?", "What is the market analysis?"]
             },
             "api_integration_guide.txt": {
                 "keywords": ["api", "integration", "guide", "documentation", "endpoints", "authentication", "examples", "code"],
-                "description": "API integration guide with endpoints, authentication andcode examples",
+                "description": "API integration guide with endpoints, authentication and code examples",
                 "questions": ["How do I integrate with the API?", "What are the API endpoints?", "How do I authenticate?", "Are there code examples?"]
             },
             "system_architecture.txt": {
                 "keywords": ["architecture", "system", "design", "components", "infrastructure", "technology", "stack", "diagram"],
-                "description": "System architecture documentation covering components, infrastructure andtechnology stack",
+                "description": "System architecture documentation covering components, infrastructure and technology stack",
                 "questions": ["What is the system architecture?", "What technologies are used?", "How is the system designed?", "What are the main components?"]
             }
         }
